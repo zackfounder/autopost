@@ -1,0 +1,37 @@
+{
+  "name": "linkedin-pilot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A local LinkedIn automation engine with the same architecture as Linked Helper: one real browser, a step-based campaign funnel, rolling rate limits, and an AI-drivable control API.",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "db:init": "tsx scripts/init-db.ts",
+    "login": "tsx scripts/login.ts",
+    "campaign": "tsx scripts/campaign.ts",
+    "leads": "tsx scripts/leads.ts",
+    "schedule": "tsx scripts/schedule.ts",
+    "accounts": "tsx scripts/accounts.ts",
+    "start": "tsx src/server/index.ts",
+    "dev": "tsx watch src/server/index.ts",
+    "mcp": "tsx src/mcp/server.ts",
+    "smoke": "tsx scripts/smoke.ts",
+    "postinstall": "playwright install chromium"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.0",
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "csv-parse": "^7.0.1",
+    "dotenv": "^16.4.5",
+    "playwright": "^1.50.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "name": "founders-warm-intro",
+  "account": "main",
+  "status": "paused",
+  "config": {
+    "purpose": "Connect with seed-stage founders and open a conversation about Crew."
+  },
+  "steps": [
+    {
+      "action": "visit_profile",
+      "note": "Warm-up touch. Also fills in name/headline/company/degree for every later step.",
+      "params": { "dwellPasses": 3 }
+    },
+    {
+      "action": "ai_qualify",
+      "note": "Drop bad fits BEFORE spending an invite on them. Invites are the scarcest resource.",
+      "params": {
+        "icp": "Founder, co-founder or CEO at a startup under ~30 people, ideally pre-Series-A. Not agencies, not recruiters, not coaches, not enterprise employees with a founder-sounding title.",
+        "minScore": 65,
+        "into": "icp"
+      }
+    },
+    {
+      "action": "ai_message",
+      "note": "Writes the invite note. Does not send it — the invite step below consumes it.",
+      "params": {
+        "brief": "Open a conversation with {{first_name}}. One specific reference to what they are building, then a light ask to compare notes. No pitch.",
+        "into": "invite_note",
+        "maxChars": 280,
+        "tone": "peer to peer, plain, slightly informal"
+      }
+    },
+    {
+      "action": "invite",
+      "note": "The rate-limited step. Everything above exists to make this one count.",
+      "params": { "note": "{{vars.invite_note}}" }
+    },
+    {
+      "action": "filter_connected",
+      "note": "The gate. Nobody reaches a message step until LinkedIn says they are 1st-degree.",
+      "params": { "recheckHours": 24, "giveUpDays": 21 }
+    },
+    {
+      "action": "delay",
+      "note": "Do not message the same hour they accept.",
+      "params": { "hours": 20, "jitterHours": 10 }
+    },
+    {
+      "action": "ai_message",
+      "params": {
+        "brief": "{{first_name}} just accepted. Thank them briefly, say in one sentence what Crew does, and ask one genuine question about their current biggest bottleneck.",
+        "into": "first_dm",
+        "maxChars": 600
+      }
+    },
+    {
+      "action": "message",
+      "params": { "body": "{{vars.first_dm}}" }
+    },
+    {
+      "action": "check_replies",
+      "note": "This is the wait AND the reply detector. A plain delay here would follow up on people who already answered.",
+      "params": { "waitHours": 96, "onReply": "stop" }
+    },
+    {
+      "action": "message",
+      "note": "Only reached by people who did not reply within 96 hours.",
+      "params": {
+        "body": "No worries if the timing is off, {{first_name}} — I'll leave it here. If it's ever useful, the door's open."
+      }
+    },
+    {
+      "action": "check_replies",
+      "params": { "waitHours": 168, "onReply": "stop" }
+    },
+    {
+      "action": "end"
+    }
+  ]
+}

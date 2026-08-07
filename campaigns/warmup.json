@@ -1,0 +1,14 @@
+{
+  "name": "account-warmup",
+  "account": "main",
+  "status": "paused",
+  "config": {
+    "purpose": "Run this for 1-2 weeks BEFORE any invite campaign on a new or dormant account. It only visits and follows — no invites, no messages — so LinkedIn sees activity ramping the way a returning human's would."
+  },
+  "steps": [
+    { "action": "visit_profile", "params": { "dwellPasses": 4 } },
+    { "action": "delay", "params": { "hours": 6, "jitterHours": 10 } },
+    { "action": "follow" },
+    { "action": "end" }
+  ]
+}
