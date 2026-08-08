@@ -19,7 +19,8 @@
     "dev": "tsx watch src/server/index.ts",
     "mcp": "tsx src/mcp/server.ts",
     "smoke": "tsx scripts/smoke.ts",
-    "postinstall": "playwright install chromium"
+    "postinstall": "playwright install chromium",
+    "login:all": "tsx scripts/login-all.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",

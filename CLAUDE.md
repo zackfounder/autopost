@@ -49,9 +49,12 @@ One tick = at most one action, then a 35–140s human gap.
 ## Things that look like bugs and are not
 
 - **In mock mode every draft is `blocked`.** `MockClient.text()` emits an em-dash,
-  which the gate bans. Smoke check #11 asserts this. Without `ANTHROPIC_API_KEY` the
-  funnel and every non-content path still work; content generation is expected to
-  block.
+  which the gate bans. Smoke check #11 asserts this — and forces the mock explicitly,
+  so the suite keeps its no-credentials-no-network contract whatever keys exist.
+  Mock is now the *third* choice: `ANTHROPIC_API_KEY` wins, then `GROQ_API_KEY`
+  (free, and what Crew HQ runs on), then mock. The startup banner reports which one
+  is live — it used to guess from the Anthropic key alone and would say `mock` while
+  Groq was really generating.
 - **Steps execute bottom-to-top.** `pickWork()` scans the workflow from the last
   position backwards on purpose (Linked Helper's queue rule — `docs/ARCHITECTURE.md §2`).
   Do not "fix" it to scan forwards.
@@ -79,6 +82,7 @@ One tick = at most one action, then a 35–140s human gap.
 npm run smoke      # 45 checks. No credentials, no network, no browser. Run this first.
 npm run typecheck
 npm run accounts   # read-only: what is connected, what it can do, today's budget
+npm run login:all  # walks every account that has no live session, one browser each
 npm run start      # dashboard + control API on :4310. Engine stays stopped until you press start.
 npm run mcp        # MCP server on stdio (23 tools)
 ```
