@@ -74,6 +74,28 @@ export type LoginState = 'ok' | 'logged_out' | 'checkpoint';
  * anything but 'ok' the engine stops touching the account instead of hammering a
  * challenge page, which is exactly the behaviour that turns a soft check into a ban.
  */
+
+/**
+ * Read the login state WITHOUT navigating.
+ *
+ * checkLogin() calls page.goto() to find out where it lands, which is correct
+ * when nobody is using the window. During an interactive login it is
+ * destructive: polling every five seconds navigated the owner off LinkedIn's
+ * two-step verification page mid-code, LinkedIn treated the challenge as
+ * abandoned and bounced back to the login form, and the loop repeated forever.
+ *
+ * This looks at where the page already is and says nothing more.
+ */
+export function observeLogin(session: Session): LoginState {
+  const adapter = getPlatform(session.account.platform ?? 'linkedin');
+  const url = session.page.url();
+  if (adapter.checkpointPatterns.test(url)) return 'checkpoint';
+  if (adapter.loggedOutPatterns.test(url)) return 'logged_out';
+  // A blank tab is not a logged-in session.
+  if (!url || url === 'about:blank') return 'logged_out';
+  return 'ok';
+}
+
 export async function checkLogin(session: Session): Promise<LoginState> {
   const { page, account } = session;
 

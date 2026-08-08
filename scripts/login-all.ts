@@ -17,7 +17,7 @@ import { spawnSync } from 'node:child_process';
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
 import { initSchema, listAccounts } from '../src/db/index.ts';
-import { PLATFORM_IDS, getPlatform } from '../src/platforms/index.ts';
+import { getPlatform } from '../src/platforms/index.ts';
 import { checkLogin, openSession } from '../src/browser/session.ts';
 
 const args = process.argv.slice(2);
@@ -30,25 +30,26 @@ const only = (flag('only') ?? '').split(',').map((s) => s.trim()).filter(Boolean
 
 // The name each platform's account gets if it does not exist yet. One account,
 // one profile directory, one platform — never shared.
-const DEFAULT_NAME: Record<string, string> = {
-  linkedin: 'main',
-  x: 'main-x',
-  quora: 'main-quora',
-  indiehackers: 'main-ih',
-};
+// Two presences on the platforms that have them: a personal account and the
+// company page's own account. They are separate logins, separate browsers,
+// separate profile directories — never shared.
+const WANTED: { platform: string; name: string; label: string }[] = [
+  { platform: 'linkedin',     name: 'main',          label: 'LinkedIn — your personal account' },
+  { platform: 'linkedin',     name: 'crew-linkedin', label: 'LinkedIn — the Crew company account' },
+  { platform: 'x',            name: 'main-x',        label: 'X — your personal account' },
+  { platform: 'x',            name: 'crew-x',        label: 'X — the Crew company account' },
+  { platform: 'quora',        name: 'main-quora',    label: 'Quora' },
+  { platform: 'indiehackers', name: 'main-ih',       label: 'Indie Hackers' },
+];
 
 initSchema();
 
 const existing = listAccounts();
-const byPlatform = new Map(existing.map((a) => [a.platform, a]));
+const byName = new Map(existing.map((a) => [a.name, a]));
 
-const targets = PLATFORM_IDS
-  .filter((p) => (only.length ? only.includes(p) : true))
-  .map((p) => ({
-    platform: p,
-    name: byPlatform.get(p)?.name ?? DEFAULT_NAME[p] ?? `main-${p}`,
-    known: byPlatform.has(p),
-  }));
+const targets = WANTED
+  .filter((w) => (only.length ? only.includes(w.platform) || only.includes(w.name) : true))
+  .map((w) => ({ ...w, known: byName.has(w.name) }));
 
 console.log('\nChecking which accounts already have a live session.\n');
 
@@ -56,18 +57,18 @@ const needed: typeof targets = [];
 
 for (const t of targets) {
   if (!t.known) {
-    console.log(`  ${getPlatform(t.platform).displayName.padEnd(14)} no account yet → will create "${t.name}"`);
+    console.log(`  ${t.label.padEnd(38)} no account yet → will create "${t.name}"`);
     needed.push(t);
     continue;
   }
   if (force) {
-    console.log(`  ${getPlatform(t.platform).displayName.padEnd(14)} re-checking (--force)`);
+    console.log(`  ${t.label.padEnd(38)} re-checking (--force)`);
     needed.push(t);
     continue;
   }
   // The only way to know is to open the profile and ask the platform.
-  process.stdout.write(`  ${getPlatform(t.platform).displayName.padEnd(14)} checking… `);
-  const account = byPlatform.get(t.platform)!;
+  process.stdout.write(`  ${t.label.padEnd(38)} checking… `);
+  const account = byName.get(t.name)!;
   try {
     const session = await openSession(account, { headless: true });
     const state = await checkLogin(session);
@@ -91,14 +92,14 @@ if (!needed.length) {
   process.exit(0);
 }
 
-console.log(`\n${needed.length} to do: ${needed.map((t) => t.platform).join(', ')}`);
+console.log(`\n${needed.length} to do: ${needed.map((t) => t.name).join(', ')}`);
 console.log('A real browser opens for each. Log in by hand, then close the window.');
 console.log('Nothing here ever sees your password or your 2FA code.\n');
 
 const rl = createInterface({ input: stdin, output: stdout });
 
 for (const [i, t] of needed.entries()) {
-  const label = getPlatform(t.platform).displayName;
+  const label = t.label;
   const answer = await rl.question(
     `[${i + 1}/${needed.length}] Open ${label} now? (enter to go, s to skip) `,
   );
@@ -109,7 +110,8 @@ for (const [i, t] of needed.entries()) {
 
   const res = spawnSync(
     'npx',
-    ['tsx', 'scripts/login.ts', t.name, '--platform', t.platform],
+    ['tsx', 'scripts/login.ts', t.name, '--platform', t.platform,
+     ...(force ? ['--reset'] : [])],
     { stdio: 'inherit' },
   );
 

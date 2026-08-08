@@ -1,5 +1,5 @@
 import { initSchema, upsertAccount, setAccountStatus } from '../src/db/index.ts';
-import { openSession, profileDirFor, checkLogin, whoAmI } from '../src/browser/session.ts';
+import { openSession, profileDirFor, checkLogin, observeLogin, whoAmI } from '../src/browser/session.ts';
 import { getPlatform, PLATFORM_IDS, isPlatformId } from '../src/platforms/index.ts';
 
 /**
@@ -28,14 +28,25 @@ const platform = flag('platform') ?? 'linkedin';
 const proxy = flag('proxy');
 
 if (!name || !isPlatformId(platform)) {
-  console.error('usage: npm run login -- <account-name> --platform <platform> [--proxy <url>]');
+  console.error('usage: npm run login -- <account-name> --platform <platform> [--proxy <url>] [--reset]');
   console.error(`platforms: ${PLATFORM_IDS.join(' | ')}`);
   process.exit(1);
 }
 
 const adapter = getPlatform(platform);
+const reset = args.includes('--reset');
 
 initSchema();
+
+// Signing out inside the platform is unreliable and slow. Deleting the profile
+// directory is the honest way to say "this is the wrong account" — the next
+// launch starts with no cookies at all.
+if (reset) {
+  const { rmSync } = await import('node:fs');
+  const dir = profileDirFor(name);
+  rmSync(dir, { recursive: true, force: true });
+  console.log(`wiped the session for "${name}". Starting clean.`);
+}
 const account = upsertAccount(name, profileDirFor(name), proxy, platform);
 console.log(`account "${name}"  platform=${adapter.displayName}`);
 console.log(`profile dir: ${account.profile_dir}`);
@@ -48,17 +59,35 @@ console.log(`\nA browser window is open at ${adapter.displayName}.`);
 console.log('Log in there yourself, including any 2FA. This script will wait.');
 console.log('Nothing is typed for you and no credentials are read.\n');
 
-const deadline = Date.now() + 10 * 60_000;
-let state = await checkLogin(session);
-while (state !== 'ok' && Date.now() < deadline) {
-  await new Promise((r) => setTimeout(r, 5_000));
-  state = await checkLogin(session);
+// Watch, do not touch. The old loop called checkLogin() every five seconds,
+// which navigates — so it pulled the window off the 2FA page mid-code and the
+// login could never complete. Now the page is left entirely alone until it
+// settles somewhere logged in for two consecutive checks.
+const deadline = Date.now() + 15 * 60_000;
+let state = observeLogin(session);
+let stable = 0;
+while (Date.now() < deadline) {
+  await new Promise((r) => setTimeout(r, 3_000));
+  const now = observeLogin(session);
+  if (now !== state) {
+    if (now === 'checkpoint') console.log('\n  two-step verification — take your time, nothing will interrupt');
+    state = now;
+    stable = 0;
+  }
+  if (state === 'ok') {
+    stable += 1;
+    if (stable >= 2) break;   // settled, not mid-redirect
+  }
   process.stdout.write('.');
 }
 console.log('');
 
+// One real navigation at the end, to confirm the session actually persists
+// rather than trusting the URL we happened to land on.
+if (state === 'ok') state = await checkLogin(session);
+
 if (state !== 'ok') {
-  console.error(`\nStill "${state}" after 10 minutes. Leaving the window open — rerun when logged in.`);
+  console.error(`\nStill "${state}" after 15 minutes. Leaving the window open — rerun when logged in.`);
   process.exit(1);
 }
 
