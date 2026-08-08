@@ -367,7 +367,11 @@ export function startServer(): void {
 
   server.listen(env.port, () => {
     console.log(`linkedin-pilot dashboard  http://localhost:${env.port}`);
-    console.log(`AI provider               ${env.anthropicApiKey ? 'anthropic' : 'mock'}`);
+    // Ask the client what it actually is. This line used to guess from
+    // ANTHROPIC_API_KEY alone, so adding Groq made it report 'mock' while
+    // generation was really running on Groq — the one line whose whole job is
+    // to tell you which provider you are on, quietly lying about it.
+    console.log(`AI provider               ${buildAiClient().kind}`);
     if (!env.apiToken) {
       console.log('WARNING: API_TOKEN is empty — the control API is unauthenticated.');
     }
