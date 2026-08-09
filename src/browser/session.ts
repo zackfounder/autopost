@@ -98,6 +98,34 @@ export function observeLogin(session: Session): LoginState {
   return 'ok';
 }
 
+/**
+ * The address bar after the page has stopped moving.
+ *
+ * These platforms decide whether you are signed in on the client, after
+ * domcontentloaded, so the first URL you can read is the one you asked for
+ * rather than the one you got. Poll until it holds still.
+ */
+async function settledUrl(page: import('playwright').Page, ms = 9_000): Promise<string> {
+  let last = page.url();
+  let stableFor = 0;
+  const step = 500;
+  for (let waited = 0; waited < ms; waited += step) {
+    await page.waitForTimeout(step);
+    const now = page.url();
+    if (now === last) {
+      stableFor += step;
+      // Two seconds without a redirect is settled. A client-side bounce is
+      // quicker than that; waiting the full budget on every healthy account
+      // would make checking six of them needlessly slow.
+      if (stableFor >= 2_000) break;
+    } else {
+      last = now;
+      stableFor = 0;
+    }
+  }
+  return last;
+}
+
 export async function checkLogin(session: Session): Promise<LoginState> {
   const { page, account } = session;
 
@@ -111,7 +139,11 @@ export async function checkLogin(session: Session): Promise<LoginState> {
     return 'logged_out';
   }
 
-  const url = page.url();
+  // Both URL patterns test the very address we just navigated to — X's homeUrl
+  // is /home and its logged-in pattern is /home. Read too early and the answer
+  // is always yes, because the signed-out redirect has not happened yet. That
+  // is exactly how a signed-out X account reported itself logged in.
+  const url = await settledUrl(page);
 
   // A bot check is not a verdict on the session. Quora's Cloudflare page says
   // nothing about whether anyone is signed in, and reading it as 'logged out'
