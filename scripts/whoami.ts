@@ -92,7 +92,11 @@ for (const account of accounts) {
       continue;
     }
 
-    const target = await selfUrl(session.page, platform, adapter.homeUrl);
+    // A company page is a different entity from the person who administers it.
+    // Reading /in/me/ for both reported the personal profile's 1,219 followers
+    // against a page that has 4.
+    const target = account.page_url
+      ?? await selfUrl(session.page, platform, adapter.homeUrl);
     await session.page
       .goto(target, { waitUntil: 'domcontentloaded', timeout: 30_000 })
       .catch(() => {});
@@ -104,7 +108,7 @@ for (const account of accounts) {
     const handle = account.handle ?? account.public_id ?? null;
 
     console.log(
-      `  ${label.padEnd(30)} logged in` +
+      `  ${(account.page_url ? `${account.name} (page)` : label).padEnd(30)} logged in` +
       `${handle ? `  as ${handle}` : ''}` +
       `${followers ? `  ·  ${followers} followers` : '  ·  follower count not on this page'}`,
     );

@@ -53,6 +53,12 @@ function migrate(): void {
   if (!has('post_as')) {
     db().exec('ALTER TABLE accounts ADD COLUMN post_as TEXT');
   }
+  // The page's public URL. whoami read /in/me/ for both LinkedIn accounts and
+  // reported 1,219 followers for the company page, which has 4 — the same login
+  // but a completely different entity, and one Elena writes for very differently.
+  if (!has('page_url')) {
+    db().exec('ALTER TABLE accounts ADD COLUMN page_url TEXT');
+  }
 }
 
 export function closeDb(): void {
