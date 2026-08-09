@@ -62,6 +62,13 @@ function migrate(): void {
   // Headless was global. Quora sits behind Cloudflare, which serves a headless
   // browser a security check instead of the site, so it could never have
   // posted there however good the selectors were. 1 = force a visible window.
+  // The account's OWN profile, discovered once from the header and stored.
+  // Guessing it at read time picked the first /profile/ link on the page, which
+  // is a stranger from the feed — it reported another Quora user's 15,026
+  // followers as ours.
+  if (!has('self_url')) {
+    db().exec('ALTER TABLE accounts ADD COLUMN self_url TEXT');
+  }
   if (!has('force_headed')) {
     db().exec('ALTER TABLE accounts ADD COLUMN force_headed INTEGER NOT NULL DEFAULT 0');
   }

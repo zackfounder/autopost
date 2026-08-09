@@ -11,6 +11,8 @@ export interface Account {
   post_as: string | null;
   /** Public URL of the page this account posts to, when it is not a personal profile. */
   page_url: string | null;
+  /** This account's own profile URL, verified from the header — never the feed. */
+  self_url: string | null;
   /** 1 when this platform refuses headless browsers (Quora, via Cloudflare). */
   force_headed: number;
   status: 'unknown' | 'ok' | 'logged_out' | 'checkpoint';

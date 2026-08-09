@@ -31,13 +31,31 @@ const headed = process.argv.includes('--headed');
  */
 const SELF_URL: Record<string, string> = {
   linkedin: 'https://www.linkedin.com/in/me/',
+  // Quora has the same idea under a different name: bare /profile redirects to
+  // whoever is signed in. Worth far more than any selector — three separate
+  // attempts to find this link in the DOM each returned a stranger from the
+  // feed, once with a 15,026-follower count attached.
+  quora: 'https://www.quora.com/profile',
 };
 
-/** A link on the logged-in page that points at the account's own profile. */
+/**
+ * A link on the logged-in page that points at the account's own profile.
+ *
+ * Every selector here MUST be anchored to the header or side nav. An unanchored
+ * `a[href*="/profile/"]` matches the first author in the feed, and this script
+ * duly went and read a stranger's Quora profile — reporting their 15,026
+ * followers as ours. A profile link in the feed is never yours.
+ */
 const PROFILE_LINK: Record<string, string[]> = {
   x: ['[data-testid="AppTabBar_Profile_Link"]', 'a[aria-label="Profile"]'],
-  quora: ['a[href*="/profile/"]'],
-  indiehackers: ['a[href^="/@"]'],
+  // Indie Hackers renders no profile link at all in its nav. Identity there
+  // comes from the avatar's alt text; see SELF_NAME.
+  indiehackers: [],
+};
+
+/** Where a platform states who you are without linking anywhere. */
+const SELF_NAME: Record<string, string> = {
+  indiehackers: 'img[alt^="Avatar for" i]',
 };
 
 async function selfUrl(page: import('playwright').Page, platform: string, home: string): Promise<string> {
@@ -96,6 +114,7 @@ for (const account of accounts) {
     // Reading /in/me/ for both reported the personal profile's 1,219 followers
     // against a page that has 4.
     const target = account.page_url
+      ?? account.self_url
       ?? await selfUrl(session.page, platform, adapter.homeUrl);
     await session.page
       .goto(target, { waitUntil: 'domcontentloaded', timeout: 30_000 })
@@ -104,13 +123,22 @@ for (const account of accounts) {
     await session.page.waitForTimeout(3_500);
 
     const text = await session.page.innerText('body').catch(() => '');
-    const followers = findFollowers(text);
-    const handle = account.handle ?? account.public_id ?? null;
+    // Only trust a follower count when we are certain whose page this is.
+    const onOwnPage = Boolean(account.page_url ?? account.self_url) || platform === 'linkedin' || platform === 'x';
+    const followers = onOwnPage ? findFollowers(text) : null;
+
+    let handle = account.handle ?? account.public_id ?? null;
+    const nameSel = SELF_NAME[platform];
+    if (nameSel) {
+      const alt = await session.page.locator(nameSel).first()
+        .getAttribute('alt', { timeout: 3_000 }).catch(() => null);
+      if (alt) handle = alt.replace(/^avatar for\s*/i, '').trim();
+    }
 
     console.log(
       `  ${(account.page_url ? `${account.name} (page)` : label).padEnd(30)} logged in` +
       `${handle ? `  as ${handle}` : ''}` +
-      `${followers ? `  ·  ${followers} followers` : '  ·  follower count not on this page'}`,
+      `${followers ? `  ·  ${followers} followers` : onOwnPage ? '  ·  follower count not on this page' : '  ·  own profile not identified'}`,
     );
     ok += 1;
     await session.close();
