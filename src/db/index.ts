@@ -47,6 +47,12 @@ function migrate(): void {
   if (!has('handle')) {
     db().exec('ALTER TABLE accounts ADD COLUMN handle TEXT');
   }
+  // A LinkedIn company page is not a separate login. It is the same person,
+  // the same session, choosing a different author in the composer. Modelling
+  // it as a second account was wrong; this names the page to post as.
+  if (!has('post_as')) {
+    db().exec('ALTER TABLE accounts ADD COLUMN post_as TEXT');
+  }
 }
 
 export function closeDb(): void {

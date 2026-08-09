@@ -7,6 +7,8 @@ export interface Account {
   proxy: string | null;
   public_id: string | null;
   handle: string | null;
+  /** A page this account administers and posts as, by exact name. LinkedIn only. */
+  post_as: string | null;
   status: 'unknown' | 'ok' | 'logged_out' | 'checkpoint';
   last_seen_at: string | null;
   created_at: string;

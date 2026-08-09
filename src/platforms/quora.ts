@@ -20,6 +20,12 @@ export const quora: PlatformAdapter = {
   loginUrl: 'https://www.quora.com/login',
   loggedOutPatterns: /\/login|\/signup/,
   checkpointPatterns: /\/challenge|captcha/,
+  loggedInSelectors: [
+    "[aria-label='Profile']",
+    "button[aria-label*='notification' i]",
+    "a[href*='/profile/']",
+    "[class*='AnswerRequestsHeader']",
+  ],
 
   can: { post: true, dm: false, feed: true, engage: ['upvote', 'comment'] },
 

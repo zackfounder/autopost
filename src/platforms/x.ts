@@ -19,6 +19,12 @@ export const x: PlatformAdapter = {
   loginUrl: 'https://x.com/i/flow/login',
   loggedOutPatterns: /\/i\/flow\/login|\/login|^https:\/\/x\.com\/?$/,
   checkpointPatterns: /\/account\/access|\/i\/flow\/consent|arkose/,
+  loggedInPatterns: /\/home/,
+  loggedInSelectors: [
+    "[data-testid='SideNav_AccountSwitcher_Button']",
+    "[data-testid='AppTabBar_Profile_Link']",
+    "[data-testid='SideNav_NewTweet_Button']",
+  ],
 
   can: { post: true, dm: true, feed: true, engage: ['like'] },
 

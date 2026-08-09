@@ -115,6 +115,23 @@ export async function checkLogin(session: Session): Promise<LoginState> {
     state = 'checkpoint';
   } else if (adapter.loggedOutPatterns.test(url)) {
     state = 'logged_out';
+  } else if (adapter.loggedInPatterns) {
+    // Both platforms redirect an authenticated session to a URL a stranger
+    // never sees. That is the signal — the DOM selectors underneath were my
+    // guesses and reported LinkedIn and X as logged out when both were fine.
+    state = adapter.loggedInPatterns.test(url) ? 'ok' : 'logged_out';
+  } else if (adapter.loggedInSelectors?.length) {
+    // The URL is not enough. Quora and Indie Hackers put their login in a modal
+    // over the homepage, so the address bar reads the same signed in or out —
+    // which marked both accounts 'ok' when nobody had logged in at all. Ask the
+    // page for something only an authenticated session renders.
+    let seen = false;
+    for (const sel of adapter.loggedInSelectors) {
+      try {
+        if (await page.locator(sel).first().isVisible({ timeout: 2_000 })) { seen = true; break; }
+      } catch { /* selector did not match; try the next */ }
+    }
+    state = seen ? 'ok' : 'logged_out';
   } else {
     state = 'ok';
   }

@@ -1,6 +1,8 @@
 import { initSchema, upsertAccount, setAccountStatus } from '../src/db/index.ts';
 import { openSession, profileDirFor, checkLogin, observeLogin, whoAmI } from '../src/browser/session.ts';
 import { getPlatform, PLATFORM_IDS, isPlatformId } from '../src/platforms/index.ts';
+import { createInterface } from 'node:readline/promises';
+import { stdin, stdout } from 'node:process';
 
 /**
  * One-time, interactive, and deliberately manual: this opens a real browser window
@@ -59,35 +61,57 @@ console.log(`\nA browser window is open at ${adapter.displayName}.`);
 console.log('Log in there yourself, including any 2FA. This script will wait.');
 console.log('Nothing is typed for you and no credentials are read.\n');
 
-// Watch, do not touch. The old loop called checkLogin() every five seconds,
-// which navigates — so it pulled the window off the 2FA page mid-code and the
-// login could never complete. Now the page is left entirely alone until it
-// settles somewhere logged in for two consecutive checks.
-const deadline = Date.now() + 15 * 60_000;
+// Watch, do not touch — and never decide on your own that he is finished.
+//
+// The first version navigated every five seconds and destroyed LinkedIn's 2FA.
+// The second stopped navigating but still guessed from the URL, and Quora puts
+// its login in a MODAL over the homepage: the URL is quora.com/ the whole time,
+// which read as "logged in", so it closed the browser six seconds in while he
+// was still looking at the form.
+//
+// The person at the keyboard knows when they are logged in. Ask them.
+const deadline = Date.now() + 20 * 60_000;
 let state = observeLogin(session);
-let stable = 0;
-while (Date.now() < deadline) {
+
+const rl = createInterface({ input: stdin, output: stdout });
+let answered = false;
+const pressed = rl.question('Press enter once you are logged in (or type q to give up): ')
+  .then((a) => { answered = true; return a.trim().toLowerCase(); });
+
+// A quiet heartbeat so he can see it is alive and what it currently thinks.
+let last = '';
+while (!answered && Date.now() < deadline) {
   await new Promise((r) => setTimeout(r, 3_000));
   const now = observeLogin(session);
-  if (now !== state) {
-    if (now === 'checkpoint') console.log('\n  two-step verification — take your time, nothing will interrupt');
-    state = now;
-    stable = 0;
+  if (now !== last) {
+    if (now === 'checkpoint') {
+      console.log('\n  two-step verification detected — take your time, nothing will interrupt you');
+      rl.setPrompt('Press enter once you are logged in (or type q to give up): ');
+      rl.prompt();
+    }
+    last = now;
   }
-  if (state === 'ok') {
-    stable += 1;
-    if (stable >= 2) break;   // settled, not mid-redirect
-  }
-  process.stdout.write('.');
+  state = now;
 }
-console.log('');
 
-// One real navigation at the end, to confirm the session actually persists
-// rather than trusting the URL we happened to land on.
-if (state === 'ok') state = await checkLogin(session);
+const reply = answered ? await pressed : 'q';
+rl.close();
+
+if (reply === 'q') {
+  console.error('\nGave up. The window is still open — rerun when you are logged in.');
+  process.exit(1);
+}
+
+// He says he is in. Confirm it for real with one navigation, which also proves
+// the session persisted rather than living only in the tab he was looking at.
+state = await checkLogin(session);
 
 if (state !== 'ok') {
-  console.error(`\nStill "${state}" after 15 minutes. Leaving the window open — rerun when logged in.`);
+  console.error(
+    state === 'checkpoint'
+      ? '\nThe platform is still challenging this account. Finish the challenge, then rerun.'
+      : `\nThe platform still says logged out. Leaving the window open — rerun when you are in.`,
+  );
   process.exit(1);
 }
 

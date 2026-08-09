@@ -34,6 +34,18 @@ export interface PlatformAdapter {
   /** URL patterns that mean "not logged in" or "challenged". */
   loggedOutPatterns: RegExp;
   checkpointPatterns: RegExp;
+  /**
+   * A URL only an authenticated session is redirected to. LinkedIn sends you to
+   * /feed and X to /home once you are in, and bounce you elsewhere if you are
+   * not — far more reliable than a DOM selector, which both platforms rotate.
+   */
+  loggedInPatterns?: RegExp;
+  /**
+   * Fallback for platforms with no such redirect. Quora and Indie Hackers put
+   * their login in a modal over the homepage, so the address bar reads the same
+   * either way and only the DOM can tell you.
+   */
+  loggedInSelectors?: string[];
 
   /** Which of the capabilities below are actually implemented for this platform. */
   can: {
@@ -56,7 +68,12 @@ export interface PlatformAdapter {
   sel: Record<string, Candidates>;
 
   /** Publish a post. Returns the permalink when the platform exposes one. */
-  post?(page: Page, body: string): Promise<{ ok: boolean; permalink?: string; error?: string }>;
+  post?(
+    page: Page,
+    body: string,
+    /** Post as a page the owner administers, by its exact name, instead of as themselves. */
+    opts?: { postAs?: string | null },
+  ): Promise<{ ok: boolean; permalink?: string; error?: string }>;
 
   /** Send a direct message to a profile URL or handle. */
   dm?(page: Page, target: string, body: string): Promise<{ ok: boolean; error?: string }>;

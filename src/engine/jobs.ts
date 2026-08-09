@@ -157,7 +157,7 @@ async function publishDue(deps: JobDeps, platform: PlatformId): Promise<JobOutco
     await dwell();
   }
 
-  const out = await adapter.post(deps.page, item.body);
+  const out = await adapter.post(deps.page, item.body, { postAs: deps.account.post_as });
 
   logAction({
     accountId: deps.account.id,

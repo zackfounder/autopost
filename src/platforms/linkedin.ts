@@ -13,6 +13,13 @@ export const linkedin: PlatformAdapter = {
   loginUrl: 'https://www.linkedin.com/login',
   loggedOutPatterns: /\/login|\/uas\/login|\/authwall/,
   checkpointPatterns: /\/checkpoint\//,
+  loggedInPatterns: /\/feed/,
+  loggedInSelectors: [
+    'img.global-nav__me-photo',
+    "[data-control-name='nav.settings']",
+    "button[aria-label*='profile' i]",
+    '.global-nav__me',
+  ],
 
   can: { post: true, dm: true, feed: true, engage: ['like', 'comment'] },
 
@@ -57,7 +64,7 @@ export const linkedin: PlatformAdapter = {
     commentSubmit: ['button.comments-comment-box__submit-button', 'button:has-text("Post"):not([disabled])'],
   },
 
-  async post(page, body) {
+  async post(page, body, opts) {
     await page.goto(this.homeUrl, { waitUntil: 'domcontentloaded' });
     await readPage(page, 2);
 
@@ -65,6 +72,36 @@ export const linkedin: PlatformAdapter = {
       return { ok: false, error: 'could not open the composer' };
     }
     await sleep(randInt(1200, 2600));
+
+    // Same account, different author. The composer opens as the person; a page
+    // post means switching the author first, and the page here is "Crew".
+    if (opts?.postAs) {
+      const picker = await firstVisible(page, [
+        'button[aria-label*="Post as"]',
+        'button[aria-label*="Select who can see"]',
+        '.share-box__actor-selector button',
+        'button:has(.share-box-feed-entry__actor-name)',
+      ], 5_000);
+      if (!picker) {
+        return { ok: false, error: 'could not find the author selector — cannot post as a page' };
+      }
+      await picker.click();
+      await sleep(randInt(700, 1400));
+
+      const option = await firstVisible(page, [
+        `[role="radio"]:has-text("${opts.postAs}")`,
+        `[role="option"]:has-text("${opts.postAs}")`,
+        `li:has-text("${opts.postAs}") input[type="radio"]`,
+        `label:has-text("${opts.postAs}")`,
+      ], 5_000);
+      if (!option) {
+        return { ok: false, error: `no page named "${opts.postAs}" in the author list — check the exact page name` };
+      }
+      await option.click();
+      await sleep(randInt(500, 1100));
+      await clickIfPresent(page, ['button:has-text("Done")', 'button:has-text("Save")'], 3_000);
+      await sleep(randInt(600, 1200));
+    }
 
     const editor = await firstVisible(page, this.sel.postEditor!, 8_000);
     if (!editor) return { ok: false, error: 'composer editor not found' };

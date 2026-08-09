@@ -23,6 +23,12 @@ export const indiehackers: PlatformAdapter = {
   loginUrl: 'https://www.indiehackers.com/sign-in',
   loggedOutPatterns: /\/sign-in|\/sign-up/,
   checkpointPatterns: /\/challenge|captcha/,
+  loggedInSelectors: [
+    "a[href*='/@']",
+    "img[alt*='avatar' i]",
+    "[class*='avatar']",
+    "a[href='/new-post']",
+  ],
 
   can: { post: true, dm: false, feed: true, engage: ['upvote', 'comment'] },
 

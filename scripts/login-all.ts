@@ -30,12 +30,12 @@ const only = (flag('only') ?? '').split(',').map((s) => s.trim()).filter(Boolean
 
 // The name each platform's account gets if it does not exist yet. One account,
 // one profile directory, one platform — never shared.
-// Two presences on the platforms that have them: a personal account and the
-// company page's own account. They are separate logins, separate browsers,
-// separate profile directories — never shared.
+// One login per real login. LinkedIn's company page is NOT a separate account:
+// it is the same person, same session, choosing a different author in the
+// composer — handled by accounts.post_as, not by a second browser. X company is
+// a genuinely separate account, so it stays.
 const WANTED: { platform: string; name: string; label: string }[] = [
   { platform: 'linkedin',     name: 'main',          label: 'LinkedIn — your personal account' },
-  { platform: 'linkedin',     name: 'crew-linkedin', label: 'LinkedIn — the Crew company account' },
   { platform: 'x',            name: 'main-x',        label: 'X — your personal account' },
   { platform: 'x',            name: 'crew-x',        label: 'X — the Crew company account' },
   { platform: 'quora',        name: 'main-quora',    label: 'Quora' },
@@ -108,12 +108,17 @@ for (const [i, t] of needed.entries()) {
     continue;
   }
 
+  // The child now prompts on stdin itself. Two readline interfaces on one
+  // terminal fight over every keystroke, so the parent's is paused for the
+  // duration and resumed after.
+  rl.pause();
   const res = spawnSync(
     'npx',
     ['tsx', 'scripts/login.ts', t.name, '--platform', t.platform,
      ...(force ? ['--reset'] : [])],
     { stdio: 'inherit' },
   );
+  rl.resume();
 
   console.log(res.status === 0 ? `  ${label} done\n` : `  ${label} did not finish — run it again later\n`);
 }
