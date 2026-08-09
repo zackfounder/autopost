@@ -20,7 +20,8 @@
     "mcp": "tsx src/mcp/server.ts",
     "smoke": "tsx scripts/smoke.ts",
     "postinstall": "playwright install chromium",
-    "login:all": "tsx scripts/login-all.ts"
+    "login:all": "tsx scripts/login-all.ts",
+    "whoami": "tsx scripts/whoami.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",
