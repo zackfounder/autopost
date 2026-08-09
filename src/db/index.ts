@@ -59,6 +59,12 @@ function migrate(): void {
   if (!has('page_url')) {
     db().exec('ALTER TABLE accounts ADD COLUMN page_url TEXT');
   }
+  // Headless was global. Quora sits behind Cloudflare, which serves a headless
+  // browser a security check instead of the site, so it could never have
+  // posted there however good the selectors were. 1 = force a visible window.
+  if (!has('force_headed')) {
+    db().exec('ALTER TABLE accounts ADD COLUMN force_headed INTEGER NOT NULL DEFAULT 0');
+  }
 }
 
 export function closeDb(): void {

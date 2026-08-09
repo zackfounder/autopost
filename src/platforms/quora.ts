@@ -18,6 +18,9 @@ export const quora: PlatformAdapter = {
   displayName: 'Quora',
   homeUrl: 'https://www.quora.com/',
   loginUrl: 'https://www.quora.com/login',
+  // /join is Quora's one-time onboarding, not a logged-out state — it only
+  // appears once you are signed in, and treating it as logged out sent the
+  // owner back to a login he had already completed.
   loggedOutPatterns: /\/login|\/signup/,
   checkpointPatterns: /\/challenge|captcha/,
   loggedInSelectors: [

@@ -39,7 +39,9 @@ export async function openSession(
   if (existing && !existing.page.isClosed()) return existing;
 
   const context = await chromium.launchPersistentContext(account.profile_dir, {
-    headless: opts.headless ?? env.headless,
+    // An account can veto headless. Quora's Cloudflare check fails a headless
+    // browser every time, so for that one the window has to be real.
+    headless: account.force_headed ? false : (opts.headless ?? env.headless),
     viewport: { width: 1440, height: 900 },
     locale: 'en-US',
     timezoneId: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -110,6 +112,15 @@ export async function checkLogin(session: Session): Promise<LoginState> {
   }
 
   const url = page.url();
+
+  // A bot check is not a verdict on the session. Quora's Cloudflare page says
+  // nothing about whether anyone is signed in, and reading it as 'logged out'
+  // told the owner to redo a login that was already fine.
+  const title = await page.title().catch(() => '');
+  if (/just a moment|checking your browser|security verification/i.test(title)) {
+    return 'checkpoint';
+  }
+
   let state: LoginState;
   if (adapter.checkpointPatterns.test(url)) {
     state = 'checkpoint';
