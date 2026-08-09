@@ -1,3 +1,4 @@
+import type { Page } from 'playwright';
 import type { PlatformAdapter, FeedItem } from './types.ts';
 import { firstVisible, clickIfPresent } from '../browser/selectors.ts';
 import { typeLikeHuman, readPage, dwell, sleep, randInt } from '../browser/human.ts';
@@ -12,6 +13,17 @@ import { typeLikeHuman, readPage, dwell, sleep, randInt } from '../browser/human
  * Selectors here use `data-testid`, which X uses consistently across its React
  * tree and which survives redesigns far better than class names.
  */
+export const X_LOCKED =
+  'X encrypted chat is locked on this browser. Open x.com/messages in the window ' +
+  '`npm run unlock:x` gives you, enter your passcode once, and DMs will work from then on.';
+
+/** True when X has redirected to its encryption-passcode screen. */
+async function xChatLocked(page: Page): Promise<boolean> {
+  if (/\/i\/chat\/pin/.test(page.url())) return true;
+  return await page.locator('[data-testid="pin-code-input-container"], [data-testid="pin-title"]')
+    .first().isVisible({ timeout: 1_500 }).catch(() => false);
+}
+
 export const x: PlatformAdapter = {
   id: 'x',
   displayName: 'X',
@@ -119,6 +131,13 @@ export const x: PlatformAdapter = {
     await page.goto(`https://x.com/${handle}`, { waitUntil: 'domcontentloaded' });
     await readPage(page, 1);
 
+    // X encrypts DMs behind a passcode. When one is set and this browser has
+    // not been unlocked, every message route — the profile DM button, /messages,
+    // everything — redirects to the passcode screen, and the composer simply is
+    // not there. Without this check the failure reads as 'DM editor not found',
+    // which sends you hunting for a selector bug that does not exist.
+    if (await xChatLocked(page)) return { ok: false, error: X_LOCKED };
+
     if (!(await clickIfPresent(page, this.sel.dmComposeButton!, 6_000))) {
       return {
         ok: false,
@@ -126,6 +145,8 @@ export const x: PlatformAdapter = {
       };
     }
     await sleep(randInt(1200, 2600));
+    // The button can be present and still land on the passcode screen.
+    if (await xChatLocked(page)) return { ok: false, error: X_LOCKED };
 
     const editor = await firstVisible(page, this.sel.dmEditor!, 8_000);
     if (!editor) return { ok: false, error: 'DM editor not found' };
