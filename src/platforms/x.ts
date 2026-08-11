@@ -76,9 +76,21 @@ export const x: PlatformAdapter = {
     likeButton: ['button[data-testid="like"]'],
     permalinkAnchor: ['a[href*="/status/"]'],
 
+    // Verified against the live chat UI on 2026-08-11, once the encryption
+    // passcode was lifted. X has moved DMs to a drawer (chat-drawer-root) and
+    // the old dmComposer* testids no longer exist anywhere on the page — the
+    // originals below were written blind and would all have missed. The send
+    // button is only rendered once the composer has text in it.
     dmComposeButton: ['button[data-testid="sendDMFromProfile"]', 'a[data-testid="DMDrawer"]'],
-    dmEditor: ['div[data-testid="dmComposerTextInput"]', 'div[role="textbox"][contenteditable="true"]'],
-    dmSend: ['button[data-testid="dmComposerSendButton"]'],
+    dmEditor: [
+      'textarea[data-testid="dm-composer-textarea"]',
+      'div[data-testid="dmComposerTextInput"]',
+      'div[role="textbox"][contenteditable="true"]',
+    ],
+    dmSend: [
+      'button[data-testid="dm-composer-send-button"]',
+      'button[data-testid="dmComposerSendButton"]',
+    ],
   },
 
   /**
