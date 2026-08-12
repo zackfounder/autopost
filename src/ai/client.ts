@@ -91,7 +91,7 @@ class AnthropicClient implements AiClient {
  * are two hundred words against a template that already dictates the shape, so
  * paying frontier prices for them buys nothing.
  *
- * Anthropic stays available: set ANTHROPIC_API_KEY and it takes precedence.
+ * Anthropic stays available: set ANTHROPIC_API_KEY *and* AI_PAID=true.
  */
 class GroqClient implements AiClient {
   readonly kind = 'groq' as const;
@@ -199,10 +199,12 @@ export function mockAiClient(): AiClient {
 
 export function buildAiClient(): AiClient {
   if (cached) return cached;
-  // Anthropic if the founder has deliberately set a key; otherwise Groq, which
-  // is free and already carries Crew HQ; mock only when neither exists, and mock
-  // fails the gate by design so nothing silently publishes stub text.
-  cached = env.anthropicApiKey
+  // Free first. Anthropic is only used when AI_PAID=true is set deliberately —
+  // having a key in .env is not a decision to spend it, and the old order meant
+  // every generation quietly billed the founder's own Anthropic account.
+  // Mock only when neither exists, and mock fails the gate by design so nothing
+  // silently publishes stub text.
+  cached = env.aiPaid && env.anthropicApiKey
     ? new AnthropicClient(env.anthropicApiKey)
     : env.groqApiKey
     ? new GroqClient(env.groqApiKey, env.groqModel)

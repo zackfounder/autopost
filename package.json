@@ -22,7 +22,8 @@
     "postinstall": "playwright install chromium",
     "login:all": "tsx scripts/login-all.ts",
     "whoami": "tsx scripts/whoami.ts",
-    "unlock:x": "tsx scripts/unlock-x.ts"
+    "unlock:x": "tsx scripts/unlock-x.ts",
+    "rail": "tsx scripts/rail.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",

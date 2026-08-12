@@ -35,7 +35,16 @@ One tick = at most one action, then a 35–140s human gap.
    immediately before the browser acts. **There is deliberately no bypass parameter.
    Do not add one.** If something needs an exception, change the template bank or the
    gate's rules.
-2. A post's `template_id` must exist in `templates/`. That is the boundary on autonomy.
+2. A post's `template_id` must exist in `templates/`. That is the boundary on an
+   **agent's** autonomy, and it is unchanged. There is exactly one other source of
+   authority: `provenance: 'founder_approved'`, which Crew HQ's rail sets from the
+   fact that HQ queued the job — after a chief reviewed it, HQ's content law
+   checked it in code, HQ's surface gate ruled on it, and the founder's door
+   opened for that specific deliverable. It is set by `scripts/rail.ts`, never by
+   anything that writes copy, and it lifts *only* the template requirement: length
+   caps, banned words, em-dashes, placeholders and every other rule still run.
+   Four smoke checks hold this line, including "an agent still cannot post
+   without a template".
 3. Generation **fails closed** — a missed post costs nothing, a bad post is public.
 4. `leads.profile_url` normalized is the dedup key across every table, forever.
 5. Stop-on-reply is structural, not a setting.
@@ -79,10 +88,13 @@ One tick = at most one action, then a 35–140s human gap.
 ## Running things
 
 ```bash
-npm run smoke      # 45 checks. No credentials, no network, no browser. Run this first.
+npm run smoke      # 58 checks. No credentials, no network, no browser. Run this first.
 npm run typecheck
 npm run accounts   # read-only: what is connected, what it can do, today's budget
 npm run login:all  # walks every account that has no live session, one browser each
+npm run unlock:x   # one-time: X encrypts DMs behind a passcode you type yourself
+npm run rail -- --dry   # what Crew HQ has queued to publish. Claims nothing.
+npm run rail       # publish it. Real posts, on real accounts.
 npm run start      # dashboard + control API on :4310. Engine stays stopped until you press start.
 npm run mcp        # MCP server on stdio (23 tools)
 ```

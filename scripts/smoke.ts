@@ -202,6 +202,24 @@ check('a post with no template id is rejected',
   !gate({ platform: 'linkedin', kind: 'post', body: 'Shipped 3 fixes today. Betting on it.' }).pass);
 check('an unapproved template id is rejected',
   !g('Shipped 3 fixes today.', { templateId: 'linkedin.made-this-up' }).pass);
+
+// The second source of authority. Crew HQ writes a post, a chief reviews it,
+// HQ's content law checks it in code, HQ's surface gate rules on it, and the
+// founder's door opens for that specific deliverable — then the rail carries
+// it. Requiring a template match on top of that chain would not add safety; it
+// would mean no HQ post could ever be published, which is exactly what happened
+// on the first four.
+check('a founder-approved post needs no template id',
+  gate({ platform: 'x', kind: 'post', provenance: 'founder_approved',
+         body: 'Crew locks one priority a day. Nothing else counts.' }).pass);
+check('founder-approved does NOT disable the other rules',
+  !gate({ platform: 'x', kind: 'post', provenance: 'founder_approved',
+          body: 'We need to leverage this synergy — betting on it.' }).pass);
+check('founder-approved does not lift the length cap',
+  !gate({ platform: 'x', kind: 'post', provenance: 'founder_approved',
+          body: 'x'.repeat(300) }).pass);
+check('an agent still cannot post without a template',
+  !gate({ platform: 'x', kind: 'post', body: 'Crew locks one priority a day.' }).pass);
 check('a banned word is rejected',
   !g('Did the math: 12 users. We need to leverage this. Betting on it.').pass);
 check('an em-dash is rejected',

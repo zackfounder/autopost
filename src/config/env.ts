@@ -20,6 +20,10 @@ export const env = {
   port: Number(str('PORT', '4310')),
   apiToken: str('API_TOKEN', ''),
   anthropicApiKey: str('ANTHROPIC_API_KEY', ''),
+  // Paid models are opt-in, the same rule Crew HQ runs on. A key sitting in
+  // .env is not consent to spend it: the key was being preferred over the free
+  // provider simply because it existed.
+  aiPaid: str('AI_PAID', '') === 'true',
   aiModel: str('AI_MODEL', 'claude-opus-5'),
   // Free lane. Crew HQ runs its entire company on this tier already.
   groqApiKey: str('GROQ_API_KEY', ''),

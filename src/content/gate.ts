@@ -58,6 +58,25 @@ export interface GateInput {
   templateId?: string | null;
   /** Bodies of the last N published items on this account, for a repetition check. */
   recentBodies?: string[];
+  /**
+   * Where this post's authority comes from.
+   *
+   * 'template' (the default) is the original rule: a post is only publishable
+   * because it derives from a shape in templates/. That is the boundary on an
+   * AGENT's autonomy, and it stays exactly as strict as it was.
+   *
+   * 'founder_approved' is the second, narrower source: Crew HQ wrote it, a
+   * chief reviewed it, HQ's content law checked it in code, HQ's surface gate
+   * ruled on it, and it only reached a queue because the founder's door opened
+   * for that specific deliverable. A template match would add nothing to that
+   * chain — it would just mean no HQ post could ever be published.
+   *
+   * This is a rule change, not a bypass: it is set by the rail, from the fact
+   * that HQ queued the job, and NEVER by anything that writes copy. An agent
+   * cannot reach it, which is the whole point. Every other rule below still
+   * runs unchanged.
+   */
+  provenance?: 'template' | 'founder_approved';
 }
 
 export interface GateResult {
@@ -78,7 +97,8 @@ export function gate(input: GateInput): GateResult {
 
   /* ── 1. Template binding. The boundary on autonomy. ─────────────────────── */
   let template: Template | null = null;
-  if (input.kind === 'post') {
+  const founderApproved = input.provenance === 'founder_approved';
+  if (input.kind === 'post' && !founderApproved) {
     if (!input.templateId) {
       v.push('No template id. Every post must derive from an approved template in templates/.');
     } else if (!isApprovedTemplate(input.templateId)) {
