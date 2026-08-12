@@ -128,8 +128,26 @@ export const x: PlatformAdapter = {
     if (!(await clickIfPresent(page, this.sel.composerSubmit!, 6_000))) {
       return { ok: false, error: 'post button not clickable' };
     }
-    await sleep(randInt(2500, 5000));
-    return { ok: true };
+
+    // Clicking is not publishing. A four-character test post returned ok and
+    // never appeared on the timeline, because this returned success the moment
+    // the click landed — the rail would have recorded it as published and moved
+    // on. X closes the composer when it accepts a post, so the composer still
+    // being there, still holding the text, is the honest signal that it did not.
+    for (let waited = 0; waited < 12_000; waited += 1_000) {
+      await sleep(1_000);
+      const stillOpen = await firstVisible(page, this.sel.composerEditor!, 500);
+      if (!stillOpen) return { ok: true };
+    }
+
+    const editorSel = this.sel.composerEditor?.[0] ?? 'div[data-testid="tweetTextarea_0"]';
+    const leftover = await page.locator(editorSel).first().innerText().catch(() => '');
+    return {
+      ok: false,
+      error: leftover.trim()
+        ? `X did not accept it — the composer is still open with "${leftover.trim().slice(0, 40)}" in it`
+        : 'X did not accept it — the composer never closed',
+    };
   },
 
   /**
@@ -168,8 +186,21 @@ export const x: PlatformAdapter = {
     if (!(await clickIfPresent(page, this.sel.dmSend!, 5_000))) {
       return { ok: false, error: 'DM send button not clickable' };
     }
-    await sleep(randInt(1500, 3200));
-    return { ok: true };
+
+    // Same lesson as post(): clicking send is not sending. X clears the
+    // composer when it accepts a message, so an empty box is the signal and a
+    // box still holding the text is a message that never left. Returning ok
+    // here regardless would tell the company a prospect had been written to
+    // when they had not.
+    const box = page.locator(
+      this.sel.dmEditor?.[0] ?? 'textarea[data-testid="dm-composer-textarea"]',
+    ).first();
+    for (let waited = 0; waited < 10_000; waited += 1_000) {
+      await sleep(1_000);
+      const left = await box.inputValue().catch(() => '');
+      if (!left.trim()) return { ok: true };
+    }
+    return { ok: false, error: 'X did not send it — the message is still sitting in the composer' };
   },
 
   async readFeed(page, limit) {
