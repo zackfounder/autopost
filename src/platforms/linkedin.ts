@@ -142,9 +142,12 @@ export const linkedin: PlatformAdapter = {
    * is the honest way in — and the control menu only offers Delete on a post
    * this account owns, which is the ownership check.
    */
-  async deletePost(page, needle) {
-    const listing = (this as unknown as { _postsUrl?: string })._postsUrl
-      ?? 'https://www.linkedin.com/company/meetcrewapp/posts/';
+  async deletePost(page, needle, opts) {
+    // Where this account's own posts are listed. A page has a posts tab; a
+    // person has their activity feed. There is no permalink to go to because
+    // LinkedIn never hands one back.
+    const listing = opts?.listingUrl
+      ?? 'https://www.linkedin.com/in/me/recent-activity/all/';
     await page.goto(listing, { waitUntil: 'domcontentloaded' });
     await readPage(page, 2);
 

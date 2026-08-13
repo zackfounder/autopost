@@ -86,7 +86,12 @@ export interface PlatformAdapter {
    * actually gone rather than reporting success off a click, and must refuse
    * outright if it cannot confirm whose post it is.
    */
-  deletePost?(page: Page, url: string): Promise<{ ok: boolean; error?: string }>;
+  deletePost?(
+    page: Page,
+    /** A permalink where the platform gives one, or the post's text where it does not. */
+    ref: string,
+    opts?: { listingUrl?: string },
+  ): Promise<{ ok: boolean; error?: string }>;
 
   /** Read the feed and return candidate items to engage with. */
   readFeed?(page: Page, limit: number): Promise<FeedItem[]>;
