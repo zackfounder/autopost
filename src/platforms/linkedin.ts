@@ -112,7 +112,18 @@ export const linkedin: PlatformAdapter = {
     if (!(await clickIfPresent(page, this.sel.postSubmit!, 6_000))) {
       return { ok: false, error: 'Post button not clickable (LinkedIn often disables it until the editor registers input)' };
     }
-    await sleep(randInt(2500, 5000));
+    // Clicking Post is not posting. Both X paths returned ok the instant the
+    // click landed and one of them was wrong; the same shape was here. LinkedIn
+    // closes the composer when it accepts, so the editor still being on screen
+    // is the honest answer.
+    let closed = false;
+    for (let waited = 0; waited < 15_000; waited += 1_000) {
+      await sleep(1_000);
+      if (!(await firstVisible(page, this.sel.postEditor!, 500))) { closed = true; break; }
+    }
+    if (!closed) {
+      return { ok: false, error: 'LinkedIn did not accept it — the composer never closed' };
+    }
 
     const link = await firstVisible(page, this.sel.postedToast!, 6_000);
     const permalink = link ? ((await link.getAttribute('href')) ?? undefined) : undefined;
