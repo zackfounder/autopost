@@ -69,6 +69,13 @@ function migrate(): void {
   if (!has('self_url')) {
     db().exec('ALTER TABLE accounts ADD COLUMN self_url TEXT');
   }
+  // Where this account's composer actually lives. The feed's "Start a post"
+  // opens a modal whose contents never load for an automated browser; a
+  // company page's admin view opens a working one. Vanity URLs redirect to
+  // /company/unavailable/ here, so this holds the numeric form.
+  if (!has('composer_url')) {
+    db().exec('ALTER TABLE accounts ADD COLUMN composer_url TEXT');
+  }
   if (!has('force_headed')) {
     db().exec('ALTER TABLE accounts ADD COLUMN force_headed INTEGER NOT NULL DEFAULT 0');
   }

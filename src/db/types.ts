@@ -13,6 +13,8 @@ export interface Account {
   page_url: string | null;
   /** This account's own profile URL, verified from the header — never the feed. */
   self_url: string | null;
+  /** The page where this account's post composer actually opens. */
+  composer_url: string | null;
   /** 1 when this platform refuses headless browsers (Quora, via Cloudflare). */
   force_headed: number;
   status: 'unknown' | 'ok' | 'logged_out' | 'checkpoint';

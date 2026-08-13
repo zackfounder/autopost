@@ -64,70 +64,126 @@ export const linkedin: PlatformAdapter = {
     commentSubmit: ['button.comments-comment-box__submit-button', 'button:has-text("Post"):not([disabled])'],
   },
 
+  /**
+   * Publish a post.
+   *
+   * `opts.composerUrl` is where the composer actually opens for this account.
+   * The feed's own "Start a post" opens a modal whose contents never load for
+   * an automated browser — the dialog renders as "This is a modal window" with
+   * no editor inside it, headed or headless. A company page's admin view opens
+   * a real one, already authored as the page, which also removes the need to
+   * drive the author picker at all.
+   *
+   * LinkedIn has moved to hashed class names, so every handle here is text or
+   * an aria-label. Expect this to need re-checking, not to hold forever.
+   */
   async post(page, body, opts) {
-    await page.goto(this.homeUrl, { waitUntil: 'domcontentloaded' });
+    const entry = (opts as { composerUrl?: string } | undefined)?.composerUrl ?? this.homeUrl;
+    await page.goto(entry, { waitUntil: 'domcontentloaded' });
     await readPage(page, 2);
 
-    if (!(await clickIfPresent(page, this.sel.startPost!, 6_000))) {
-      return { ok: false, error: 'could not open the composer' };
-    }
-    await sleep(randInt(1200, 2600));
+    // Exact text first. `has-text` matches any ancestor containing the phrase,
+    // so on the admin page it selected an outer container whose click opened a
+    // different, empty modal — the composer looked broken when the wrong thing
+    // had been opened.
+    const trigger = await firstVisible(page, [
+      ':text-is("Start a post")',
+      'div[role="button"]:has-text("Start a post")',
+      'button:has-text("Start a post")',
+    ], 10_000);
+    if (!trigger) return { ok: false, error: 'could not find "Start a post"' };
+    await trigger.click();
+    await sleep(randInt(4000, 6000));
 
-    // Same account, different author. The composer opens as the person; a page
-    // post means switching the author first, and the page here is "Crew".
-    if (opts?.postAs) {
-      const picker = await firstVisible(page, [
-        'button[aria-label*="Post as"]',
-        'button[aria-label*="Select who can see"]',
-        '.share-box__actor-selector button',
-        'button:has(.share-box-feed-entry__actor-name)',
-      ], 5_000);
-      if (!picker) {
-        return { ok: false, error: 'could not find the author selector — cannot post as a page' };
-      }
-      await picker.click();
-      await sleep(randInt(700, 1400));
-
-      const option = await firstVisible(page, [
-        `[role="radio"]:has-text("${opts.postAs}")`,
-        `[role="option"]:has-text("${opts.postAs}")`,
-        `li:has-text("${opts.postAs}") input[type="radio"]`,
-        `label:has-text("${opts.postAs}")`,
-      ], 5_000);
-      if (!option) {
-        return { ok: false, error: `no page named "${opts.postAs}" in the author list — check the exact page name` };
-      }
-      await option.click();
-      await sleep(randInt(500, 1100));
-      await clickIfPresent(page, ['button:has-text("Done")', 'button:has-text("Save")'], 3_000);
-      await sleep(randInt(600, 1200));
+    // Several editors match; only one is on screen.
+    const editor = await firstVisible(page, [
+      '[role="dialog"] [contenteditable="true"][aria-label*="Text editor" i]',
+      '[contenteditable="true"][aria-label*="Text editor" i]',
+      '[role="dialog"] [contenteditable="true"]',
+    ], 12_000);
+    if (!editor) {
+      return { ok: false, error: 'the composer opened but no editor loaded inside it' };
     }
 
-    const editor = await firstVisible(page, this.sel.postEditor!, 8_000);
-    if (!editor) return { ok: false, error: 'composer editor not found' };
-
+    await editor.click();
     await typeLikeHuman(editor, body);
     await dwell();
 
-    if (!(await clickIfPresent(page, this.sel.postSubmit!, 6_000))) {
-      return { ok: false, error: 'Post button not clickable (LinkedIn often disables it until the editor registers input)' };
+    // The button's label is exactly "Post". Matching on `has-text` would also
+    // catch "Post to Anyone" (the audience picker) and post nothing; matching
+    // too narrowly missed it entirely. Filter the dialog's buttons on the exact
+    // trimmed label, and take the last, which is the primary action.
+    const submit = page.locator('[role="dialog"] button')
+      // The anchors matter and so does the whitespace: hasText does not trim,
+      // and the button's raw text is "\n  Post\n", so /^Post$/ matched nothing
+      // while the button sat there enabled. Without the anchors this would also
+      // match "Post to Anyone", the audience picker, and publish nothing.
+      .filter({ hasText: /^\s*Post\s*$/ }).last();
+    if (!(await submit.isVisible({ timeout: 10_000 }).catch(() => false))) {
+      return { ok: false, error: 'no Post button in the composer' };
     }
-    // Clicking Post is not posting. Both X paths returned ok the instant the
-    // click landed and one of them was wrong; the same shape was here. LinkedIn
-    // closes the composer when it accepts, so the editor still being on screen
-    // is the honest answer.
-    let closed = false;
-    for (let waited = 0; waited < 15_000; waited += 1_000) {
+    await submit.click();
+
+    // LinkedIn closes the composer when it accepts. Unlike X, it does not leave
+    // it open on success — verified against a real post.
+    for (let waited = 0; waited < 20_000; waited += 1_000) {
       await sleep(1_000);
-      if (!(await firstVisible(page, this.sel.postEditor!, 500))) { closed = true; break; }
+      const open = await page.locator('[role="dialog"]').first().isVisible({ timeout: 500 }).catch(() => false);
+      if (!open) return { ok: true };
     }
-    if (!closed) {
-      return { ok: false, error: 'LinkedIn did not accept it — the composer never closed' };
+    return { ok: false, error: 'LinkedIn did not accept it — the composer never closed' };
+  },
+
+  /**
+   * Delete one of this page's posts, found by its text.
+   *
+   * LinkedIn permalinks are opaque urn ids that the composer never hands back,
+   * so there is no id to keep. Matching on the text of a post we just published
+   * is the honest way in — and the control menu only offers Delete on a post
+   * this account owns, which is the ownership check.
+   */
+  async deletePost(page, needle) {
+    const listing = (this as unknown as { _postsUrl?: string })._postsUrl
+      ?? 'https://www.linkedin.com/company/meetcrewapp/posts/';
+    await page.goto(listing, { waitUntil: 'domcontentloaded' });
+    await readPage(page, 2);
+
+    const post = page.locator('div').filter({ hasText: needle }).last();
+    if (!(await post.isVisible({ timeout: 8_000 }).catch(() => false))) {
+      return { ok: false, error: 'could not find that post on the page' };
     }
 
-    const link = await firstVisible(page, this.sel.postedToast!, 6_000);
-    const permalink = link ? ((await link.getAttribute('href')) ?? undefined) : undefined;
-    return { ok: true, permalink: permalink ?? undefined };
+    const menu = await firstVisible(page, [
+      'button[aria-label*="Open control menu" i]',
+      'button[aria-label*="More" i]',
+    ], 8_000);
+    if (!menu) return { ok: false, error: 'no control menu on the post' };
+    await menu.click();
+    await sleep(randInt(800, 1500));
+
+    const del = await firstVisible(page, [
+      'div[role="menuitem"]:has-text("Delete")',
+      'span:text-is("Delete post")',
+      ':text-is("Delete post")',
+    ], 5_000);
+    if (!del) return { ok: false, error: 'no Delete in the menu — this post is not ours' };
+    await del.click();
+    await sleep(randInt(700, 1300));
+
+    const confirm = page.locator('button').filter({ hasText: /^\s*Delete\s*$/ }).last();
+    if (!(await confirm.isVisible({ timeout: 5_000 }).catch(() => false))) {
+      return { ok: false, error: 'delete confirmation never appeared' };
+    }
+    await confirm.click();
+    await sleep(randInt(3000, 5000));
+
+    // Proof: reload the listing and look again.
+    await page.goto(listing, { waitUntil: 'domcontentloaded' }).catch(() => {});
+    await sleep(6_000);
+    const body = await page.innerText('body').catch(() => '');
+    return body.includes(needle)
+      ? { ok: false, error: 'the post is still on the page' }
+      : { ok: true };
   },
 
   async dm(page, target, body) {
