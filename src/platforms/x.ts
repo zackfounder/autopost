@@ -125,29 +125,48 @@ export const x: PlatformAdapter = {
       await dwell();
     }
 
+    // Ask X, not the DOM.
+    //
+    // This used to click and sleep, then later click and wait for the composer
+    // to close. Both were guesses about a UI. The composer frequently stays
+    // open on a post X has already accepted, so the second version reported
+    // failure on successful posts — and the retry then came back "Status is a
+    // duplicate (187)", which is X confirming the first one worked.
+    //
+    // The GraphQL response is the actual answer, and it carries the id, which
+    // is the permalink we need in order to delete a post later.
+    const created = page.waitForResponse(
+      (r) => /CreateTweet/i.test(r.url()),
+      { timeout: 25_000 },
+    ).catch(() => null);
+
     if (!(await clickIfPresent(page, this.sel.composerSubmit!, 6_000))) {
       return { ok: false, error: 'post button not clickable' };
     }
 
-    // Clicking is not publishing. A four-character test post returned ok and
-    // never appeared on the timeline, because this returned success the moment
-    // the click landed — the rail would have recorded it as published and moved
-    // on. X closes the composer when it accepts a post, so the composer still
-    // being there, still holding the text, is the honest signal that it did not.
-    for (let waited = 0; waited < 12_000; waited += 1_000) {
-      await sleep(1_000);
-      const stillOpen = await firstVisible(page, this.sel.composerEditor!, 500);
-      if (!stillOpen) return { ok: true };
+    const res = await created;
+    if (!res) return { ok: false, error: 'X never answered the post request' };
+
+    const payload = await res.json().catch(() => null) as {
+      data?: { create_tweet?: { tweet_results?: { result?: { rest_id?: string } } } };
+      errors?: { code?: number; message?: string }[];
+    } | null;
+
+    const err = payload?.errors?.[0];
+    if (err) {
+      // 187 means X already has this exact text from this account. Usually that
+      // is a retry of something that did in fact publish.
+      return {
+        ok: false,
+        error: err.code === 187
+          ? 'X rejected it as a duplicate (187) — this text is already on the timeline'
+          : `X refused it: ${err.message ?? 'unknown error'}`,
+      };
     }
 
-    const editorSel = this.sel.composerEditor?.[0] ?? 'div[data-testid="tweetTextarea_0"]';
-    const leftover = await page.locator(editorSel).first().innerText().catch(() => '');
-    return {
-      ok: false,
-      error: leftover.trim()
-        ? `X did not accept it — the composer is still open with "${leftover.trim().slice(0, 40)}" in it`
-        : 'X did not accept it — the composer never closed',
-    };
+    const id = payload?.data?.create_tweet?.tweet_results?.result?.rest_id;
+    await sleep(randInt(1200, 2200));
+    return { ok: true, permalink: id ? `https://x.com/i/status/${id}` : undefined };
   },
 
   /**
@@ -201,6 +220,53 @@ export const x: PlatformAdapter = {
       if (!left.trim()) return { ok: true };
     }
     return { ok: false, error: 'X did not send it — the message is still sitting in the composer' };
+  },
+
+  /**
+   * Delete one of our own posts. Irreversible: X has no undo and no trash.
+   *
+   * The menu is opened on the post itself rather than from the timeline, so
+   * there is no chance of catching the wrong article — a positional index on a
+   * feed that reflows is how you delete a stranger's post instead of your own.
+   */
+  async deletePost(page, url) {
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await readPage(page, 1);
+
+    const more = await firstVisible(page, [
+      'article[data-testid="tweet"] button[data-testid="caret"]',
+      'button[aria-label="More"]',
+    ], 8_000);
+    if (!more) return { ok: false, error: 'could not open the post menu — is this post ours?' };
+    await more.click();
+    await sleep(randInt(700, 1400));
+
+    // "Delete" only appears in this menu for a post you own. Its absence is the
+    // safety check, not an error to work around.
+    const del = await firstVisible(page, [
+      '[role="menuitem"]:has-text("Delete")',
+      'div[role="menuitem"] span:has-text("Delete")',
+    ], 5_000);
+    if (!del) return { ok: false, error: 'no Delete in the menu — this post is not ours' };
+    await del.click();
+    await sleep(randInt(600, 1200));
+
+    const confirm = await firstVisible(page, [
+      'button[data-testid="confirmationSheetConfirm"]',
+      'button:has-text("Delete")',
+    ], 5_000);
+    if (!confirm) return { ok: false, error: 'delete confirmation never appeared' };
+    await confirm.click();
+    await sleep(randInt(2500, 4000));
+
+    // Proof, not assumption. A deleted post's permalink stops rendering it.
+    await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => {});
+    await sleep(3_000);
+    const stillThere = await page.locator('article[data-testid="tweet"]')
+      .first().isVisible({ timeout: 4_000 }).catch(() => false);
+    return stillThere
+      ? { ok: false, error: 'X still serves the post — it was not deleted' }
+      : { ok: true };
   },
 
   async readFeed(page, limit) {
