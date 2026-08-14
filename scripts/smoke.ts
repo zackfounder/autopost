@@ -209,6 +209,18 @@ check('an unapproved template id is rejected',
 // it. Requiring a template match on top of that chain would not add safety; it
 // would mean no HQ post could ever be published, which is exactly what happened
 // on the first four.
+// The breach of 2026-08-14, as a check that cannot pass again.
+{
+  const li = getPlatform('linkedin');
+  const refused = await li.post!(
+    { goto: async () => {}, } as never,
+    'Account: company copy',
+    { postAs: 'crew co-founder' } as never,
+  ).catch(() => ({ ok: false, error: 'threw' }));
+  check('a page post with no page composer is refused, never sent to the feed',
+    refused.ok === false && /personal profile|composer URL/i.test(refused.error ?? ''));
+}
+
 check('a founder-approved post needs no template id',
   gate({ platform: 'x', kind: 'post', provenance: 'founder_approved',
          body: 'Crew locks one priority a day. Nothing else counts.' }).pass);

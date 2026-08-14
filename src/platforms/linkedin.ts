@@ -78,7 +78,27 @@ export const linkedin: PlatformAdapter = {
    * an aria-label. Expect this to need re-checking, not to hold forever.
    */
   async post(page, body, opts) {
-    const entry = (opts as { composerUrl?: string } | undefined)?.composerUrl ?? this.homeUrl;
+    const o = opts as { composerUrl?: string; postAs?: string } | undefined;
+
+    // FAIL CLOSED. A page post with no page composer must never fall back to
+    // the feed, because the feed composer posts as the PERSON.
+    //
+    // This exact fallback published a company post on the founder's own profile
+    // on 2026-08-14: the rail asked for a page post by passing postAs, this
+    // ignored it, opened the feed, and posted as him. The gate had done its job
+    // — the deliverable was correctly ruled 'linkedin_company' — and the browser
+    // layer undid it silently. His own profile is the one surface that always
+    // needs his approval, so getting here by accident is the worst bug this
+    // system can have.
+    if (o?.postAs && !o?.composerUrl) {
+      return {
+        ok: false,
+        error: `refusing to post: this is meant to go out as "${o.postAs}" but no page composer URL was given, `
+          + 'and the fallback would publish it on the personal profile',
+      };
+    }
+
+    const entry = o?.composerUrl ?? this.homeUrl;
     await page.goto(entry, { waitUntil: 'domcontentloaded' });
     await readPage(page, 2);
 
