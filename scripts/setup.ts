@@ -143,7 +143,14 @@ chmodSync(envPath, 0o600);
 // ── 4. Database ──────────────────────────────────────────────────────────────
 // Imported only now: src/config/env.ts reads .env at import time, so anything
 // loaded before this point would see the file as it was before setup wrote it.
-step(4, 'database');
+step(4, 'your brief and your templates');
+const { seedConfigFiles } = await import('../src/setup/seed.ts');
+const made = seedConfigFiles(root);
+say(made.length
+  ? `   created ${made.length} file(s) from the examples — edit them to sound like you:\n     ${made.join('\n     ')}`
+  : '   already yours, left alone');
+
+step(5, 'database');
 const { initSchema, getSetting, setSetting } = await import('../src/db/index.ts');
 const { DEFAULT_WORKING_HOURS, repairSeededLimits } = await import('../src/engine/limits.ts');
 const { DEFAULT_PACING } = await import('../src/browser/human.ts');
@@ -158,13 +165,13 @@ if (getSetting<unknown>('pacing', null) === null) setSetting('pacing', DEFAULT_P
 if (getSetting<unknown>('paused', null) === null) setSetting('paused', false);
 say(`   ready at ${env.dbPath}, seeded with warm-up limits`);
 
-// ── 5. Connect LinkedIn ──────────────────────────────────────────────────────
+// ── 6. Connect LinkedIn ──────────────────────────────────────────────────────
 // Offered here rather than left as an instruction, because this is the step that
 // actually takes a minute and the one people put off.
 const { buildAiClient } = await import('../src/ai/client.ts');
 const { listAccounts } = await import('../src/db/index.ts');
 
-step(5, 'LinkedIn');
+step(6, 'LinkedIn');
 const connected = listAccounts();
 let launched = false;
 

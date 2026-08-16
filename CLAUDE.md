@@ -41,7 +41,7 @@ One tick = at most one action, then a 35–140s human gap.
    gate's rules.
 2. A post's `template_id` must exist in `templates/`. That is the boundary on an
    **agent's** autonomy, and it is unchanged. There is exactly one other source of
-   authority: `provenance: 'founder_approved'`, which Crew HQ's rail sets from the
+   authority: `provenance: 'founder_approved'`, which an upstream approval rail sets from the
    fact that HQ queued the job — after a chief reviewed it, HQ's content law
    checked it in code, HQ's surface gate ruled on it, and the founder's door
    opened for that specific deliverable. It is set by `scripts/rail.ts`, never by
@@ -64,7 +64,7 @@ One tick = at most one action, then a 35–140s human gap.
 - **In mock mode every draft is `blocked`.** `MockClient.text()` emits an em-dash,
   which the gate bans. Smoke check #11 asserts this — and forces the mock explicitly,
   so the suite keeps its no-credentials-no-network contract whatever keys exist.
-  Mock is the *third* choice: `GROQ_API_KEY` (free, and what Crew HQ runs on) is the
+  Mock is the *third* choice: `GROQ_API_KEY` (free) is the
   default lane, Anthropic is used only when `ANTHROPIC_API_KEY` **and** `AI_PAID=true`
   are both set, then mock. A key in `.env` is not consent to spend it. The startup
   banner reports which one is live — it used to guess from the Anthropic key alone and
@@ -102,7 +102,7 @@ npm run typecheck
 npm run accounts   # read-only: what is connected, what it can do, today's budget
 npm run login:all  # walks every account that has no live session, one browser each
 npm run unlock:x   # one-time: X encrypts DMs behind a passcode you type yourself
-npm run rail -- --dry   # what Crew HQ has queued to publish. Claims nothing.
+npm run rail -- --dry   # local-only integration (untracked). Claims nothing.
 npm run rail       # publish it. Real posts, on real accounts.
 npm run start      # dashboard + control API on :4310. Engine stays stopped until you press start.
 npm run mcp        # MCP server on stdio (23 tools)

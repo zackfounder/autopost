@@ -112,7 +112,7 @@ this clone implements.
 
 13 direct CRM connectors, plus inbound and outbound webhooks. The outbound webhook
 is a workflow action ("Send person to webhook") that POSTs a flat ~180-key profile
-object. Two traps, both learned the hard way (see `crew-hq-linkedhelper-payload`):
+object. Two traps, both learned the hard way:
 it fires for **every** person the step processes, not only ones matching the step's
 name; and `last_received_message_text` is *not* a reply signal — the real signal is
 `is_last_message_incoming`.

@@ -170,7 +170,7 @@ path.
 
 ### The gate — `src/content/gate.ts`
 
-Ported from crew-hq's `checkContent`. The reason it exists is recorded there: a test
+Ported from an earlier `checkContent`. The reason it exists is recorded there: a test
 post correctly declared its own account type and then broke that exact rule in the
 body, and the reviewing model passed it. **Prompting alone did not hold.** So every
 rule that can be checked by code is checked by code, on every path, every time.

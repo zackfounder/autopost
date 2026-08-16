@@ -10,11 +10,19 @@ import { gate, gateRulesForPrompt, type GateResult } from './gate.ts';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const INSTRUCTIONS_DIR = join(root, 'instructions');
 
-/** GLOBAL.md plus the platform file. Read fresh each time — editing them is live. */
+/**
+ * GLOBAL.md plus the platform file. Read fresh each time — editing them is live.
+ *
+ * Your own brief is git-ignored, so a fresh clone has only the `.example.md`
+ * versions. Falling back to those means a clone can generate on day one; the
+ * moment you write the real file, yours wins and the example is ignored.
+ */
 export function loadInstructions(platform: PlatformId): string {
   const parts: string[] = [];
-  for (const file of ['GLOBAL.md', `${platform}.md`]) {
-    const path = join(INSTRUCTIONS_DIR, file);
+  for (const name of ['GLOBAL', platform]) {
+    const mine = join(INSTRUCTIONS_DIR, `${name}.md`);
+    const example = join(INSTRUCTIONS_DIR, `${name}.example.md`);
+    const path = existsSync(mine) ? mine : example;
     if (existsSync(path)) parts.push(readFileSync(path, 'utf8').trim());
   }
   if (parts.length === 0) {

@@ -86,10 +86,9 @@ class AnthropicClient implements AiClient {
 /**
  * Groq, through its OpenAI-compatible endpoint.
  *
- * Crew HQ already runs its whole company on this free tier — meetings, work
- * blocks, the learning loop — at a measured ~670ms and zero cost. These posts
- * are two hundred words against a template that already dictates the shape, so
- * paying frontier prices for them buys nothing.
+ * The default, and on purpose. These posts are two hundred words written against
+ * a template that already dictates their shape, at a measured ~670ms and zero
+ * cost — paying frontier prices for them buys nothing.
  *
  * Anthropic stays available: set ANTHROPIC_API_KEY *and* AI_PAID=true.
  */

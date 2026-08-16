@@ -1,0 +1,95 @@
+{
+  "platform": "linkedin",
+  "kind": "post",
+  "note": "Copy to templates/linkedin/bank.json and make these yours. That file is git-ignored. A post whose template id is not in the bank in force cannot be published — that is the boundary on the agent's autonomy, and it is editable without a code change.",
+  "templates": [
+    {
+      "id": "linkedin.uncomfortable-number",
+      "name": "The uncomfortable number",
+      "when": "You have a real number about your own position that could look bad.",
+      "skeleton": "{{opening_action_with_number}}\n{{the_math_spelled_out}}\n{{one_line_naming_the_feeling}}\n{{what_you_are_not_going_to_do}}\n{{the_bet_you_are_making_instead}}",
+      "slots": {
+        "opening_action_with_number": "A concrete thing you DID, with a real number attached. 'Did the math on my runway after seeing X' — not 'thinking about growth'.",
+        "the_math_spelled_out": "The actual arithmetic, plainly. Two short sentences maximum.",
+        "one_line_naming_the_feeling": "One line. Name it and move on. No wallowing.",
+        "what_you_are_not_going_to_do": "The comparison you are refusing to make. States a limit honestly.",
+        "the_bet_you_are_making_instead": "What you are doing instead, concretely. Ends on a stance, not a question."
+      },
+      "constraints": {
+        "maxLines": 6,
+        "maxChars": 900,
+        "requiresNumber": true,
+        "minChars": 220
+      }
+    },
+    {
+      "id": "linkedin.thing-that-broke",
+      "name": "The thing that broke",
+      "when": "Something failed this week and the failure is more useful than the fix.",
+      "skeleton": "{{what_broke_specifically}}\n{{what_it_cost}}\n{{why_it_broke}}\n{{what_changed_because_of_it}}",
+      "slots": {
+        "what_broke_specifically": "Name the actual failure in one line. Not 'we had some issues'.",
+        "what_it_cost": "Hours, users, money, or trust. A real quantity.",
+        "why_it_broke": "The real cause, including the part that was your own decision.",
+        "what_changed_because_of_it": "The concrete change. If nothing changed, say that instead."
+      },
+      "constraints": {
+        "maxLines": 6,
+        "maxChars": 900,
+        "requiresNumber": true,
+        "minChars": 200
+      }
+    },
+    {
+      "id": "linkedin.decision-with-a-tradeoff",
+      "name": "The decision with a trade-off",
+      "when": "You chose between two defensible options and gave something up.",
+      "skeleton": "{{the_decision}}\n{{the_option_you_did_not_take}}\n{{what_you_gave_up}}\n{{why_anyway}}",
+      "slots": {
+        "the_decision": "What you decided, stated flatly, in one line.",
+        "the_option_you_did_not_take": "The real alternative, described fairly enough that its supporters would recognise it.",
+        "what_you_gave_up": "The actual cost. A decision with no cost is not a decision.",
+        "why_anyway": "The reasoning, in one or two sentences. No hedging."
+      },
+      "constraints": {
+        "maxLines": 6,
+        "maxChars": 900,
+        "minChars": 200
+      }
+    },
+    {
+      "id": "linkedin.customer-said",
+      "name": "What a customer actually said",
+      "when": "Someone told you something that changed your mind. You may only use words they really said.",
+      "skeleton": "{{the_context}}\n{{what_they_said}}\n{{what_you_had_assumed}}\n{{what_you_are_doing_now}}",
+      "slots": {
+        "the_context": "Who, in one clause, without naming them unless you have permission.",
+        "what_they_said": "Their words. Never paraphrase into something sharper than what was said.",
+        "what_you_had_assumed": "The belief it contradicted.",
+        "what_you_are_doing_now": "The concrete change, or an honest 'still deciding'."
+      },
+      "constraints": {
+        "maxLines": 6,
+        "maxChars": 900,
+        "minChars": 200
+      }
+    },
+    {
+      "id": "linkedin.how-it-actually-works",
+      "name": "How it actually works",
+      "when": "You built something whose mechanism is genuinely interesting to people who build.",
+      "skeleton": "{{what_it_does_in_one_line}}\n{{the_part_everyone_gets_wrong}}\n{{how_it_really_works}}\n{{the_limit}}",
+      "slots": {
+        "what_it_does_in_one_line": "Plain description. No adjectives.",
+        "the_part_everyone_gets_wrong": "The common assumption that is wrong, stated without condescension.",
+        "how_it_really_works": "The mechanism, concretely, in two sentences.",
+        "the_limit": "Where it stops working. Every real system has one; naming it is what makes the rest credible."
+      },
+      "constraints": {
+        "maxLines": 6,
+        "maxChars": 900,
+        "minChars": 220
+      }
+    }
+  ]
+}

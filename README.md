@@ -67,10 +67,17 @@ npm install
 npm run setup
 ```
 
-`setup` writes `.env`, generates the control-API token, takes your Groq key and
-proves it works against Groq before saving it, creates the database, and offers to
-open the LinkedIn login window right there. It is safe to re-run — anything already
-set is kept, and nothing is overwritten silently.
+`npm run setup` opens **a page in your browser**, not a wall of prompts. Paste the
+key and watch it get verified against Groq, click one button to open the LinkedIn
+login window, and schedule your first post — with a live checklist going green as
+each piece lands.
+
+It writes `.env` (mode `600`), generates the control-API token, creates the
+database, and copies the example brief and template bank into files that are yours
+to edit. Safe to re-run; nothing already set is overwritten. The page is served from
+127.0.0.1 for the two minutes it exists, with no CDN, no fonts and no analytics.
+
+No browser on that machine? `npm run setup:cli` is the same flow in the terminal.
 
 <details>
 <summary>Why a free key is the default, and how to use a paid one</summary>
@@ -171,8 +178,10 @@ obeys working hours and rate caps.
 
 | Command | Does |
 |---|---|
-| `npm run setup` | Write `.env`, generate the API token, verify the AI key, create the database. Re-runnable. |
-| `npm run doctor` | Read-only health check: node, keys, model, database, connected accounts |
+| `npm run setup` | The visual wizard: key, login, first post. Re-runnable. |
+| `npm run setup:cli` | The same, in the terminal |
+| `npm run doctor` | Read-only health check: node, keys, model, bind address, `.env` permissions, accounts |
+| `npm run selftest` | 46 checks driving the real adapter through a real browser against a fake LinkedIn. No account, no network |
 | `npm run smoke` | 74 checks: URL handling, workflow traps, queue machine, rate limiter, **the gate**, template rotation, thread splitting, job queue. No credentials, no network. |
 | `npm run db:init` | Create the database |
 | `npm run login -- <name> --platform <p>` | Connect one account (interactive). `--proxy socks5://…` to pin an IP. |
@@ -206,7 +215,11 @@ live in the engine, not in the tool descriptions.
 
 Everything is also plain HTTP with `Authorization: Bearer $API_TOKEN`.
 
-## Changing what they're allowed to say
+## Changing what it's allowed to say
+
+Setup copies `instructions/*.example.md` and `templates/*/bank.example.json` into
+files of your own. **Yours are git-ignored** — pulling will never overwrite your
+voice, and your voice is never in a commit.
 
 | To change | Edit | Effect |
 |---|---|---|
@@ -239,6 +252,21 @@ docs/                 AGENT-CONTROL.md, ARCHITECTURE.md
 
 ## What is verified and what is not
 
+### `npm run selftest` — the browser layer, proven
+
+A real headless Chromium, the real adapter, and every linkedin.com request answered
+from local fixtures. It drives posting, the six reactions through the hover flyout,
+comments, replies, both repost paths, follows, profile visits, the invitation
+manager and deletion — asserting the outcome the page recorded, never just that a
+call returned ok.
+
+It found four real bugs the first time it ran, including one that reported ten
+successful invitation withdrawals while the list sat untouched.
+
+**What it cannot prove:** that the fixtures match what LinkedIn serves today. They
+are a reconstruction. Passing is what makes one supervised live run worth doing —
+it is not a substitute for it.
+
 **Verified** (`npm run smoke` — 74 checks, no credentials): URL normalization; the three
 workflow-validation traps; the funnel queue end-to-end; the rolling rate limiter
 including that failed attempts don't consume quota; **13 separate content-gate
@@ -250,8 +278,9 @@ generation failing
 closed; the job queue and recurrence parsing. Typecheck is clean and the MCP server
 enumerates its tools.
 
-**Not verified: every platform selector.** `src/platforms/*.ts` has never run against
-a live logged-in session. They are written defensively —
+**Not verified against the real site: every platform selector.** `src/platforms/*.ts`
+has never run against a live logged-in session — only against the fixtures above.
+They are written defensively —
 `data-testid` on X, `aria-label` and roles elsewhere, several candidates per target,
 never obfuscated class names — but each platform needs one supervised calibration
 run: log in, schedule one job, watch the browser, and fix whatever the engine log

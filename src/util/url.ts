@@ -33,7 +33,7 @@ export function publicIdOf(profileUrl: string): string | null {
   return m?.[1] ?? null;
 }
 
-/** "Zack Guerrand" -> { first: "Zack", last: "Guerrand" } */
+/** "Dana Okonkwo" -> { first: "Dana", last: "Okonkwo" } */
 export function splitName(full: string | null | undefined): {
   first: string | null;
   last: string | null;

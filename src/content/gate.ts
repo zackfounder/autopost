@@ -5,7 +5,7 @@ import { splitThread } from '../platforms/x.ts';
 /**
  * THE GATE.
  *
- * Ported from crew-hq's `checkContent`, and it exists for the reason recorded
+ * Ported from an earlier `checkContent`, and it exists for the reason recorded
  * there: prompting alone does not hold. A test post correctly declared its own
  * account type and then broke that exact rule in the body anyway, and the chief
  * model passed it. So every rule that CAN be checked by code is checked by code,
@@ -44,7 +44,7 @@ const AI_TELL =
 const UNFILLED_SLOT = /\{\{[^}]+\}\}|\[(insert|your|company|name|number|x)\b[^\]]*\]|<[A-Z_]{3,}>/i;
 
 /**
- * The outreach-mechanics rule from crew-hq's CONTENT_LAW. The audience for these
+ * The outreach-mechanics rule. The audience for these
  * posts overlaps with the people being targeted, so acquisition machinery is never
  * public. Shipped product features are fine.
  */
@@ -65,7 +65,7 @@ export interface GateInput {
    * because it derives from a shape in templates/. That is the boundary on an
    * AGENT's autonomy, and it stays exactly as strict as it was.
    *
-   * 'founder_approved' is the second, narrower source: Crew HQ wrote it, a
+   * 'founder_approved' is the second, narrower source: an upstream rail wrote it, a
    * chief reviewed it, HQ's content law checked it in code, HQ's surface gate
    * ruled on it, and it only reached a queue because the founder's door opened
    * for that specific deliverable. A template match would add nothing to that

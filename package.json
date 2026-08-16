@@ -8,7 +8,8 @@
     "node": ">=22.5.0"
   },
   "scripts": {
-    "setup": "tsx scripts/setup.ts",
+    "setup": "tsx scripts/setup-web.ts",
+    "setup:cli": "tsx scripts/setup.ts",
     "doctor": "tsx scripts/doctor.ts",
     "typecheck": "tsc --noEmit",
     "db:init": "tsx scripts/init-db.ts",
@@ -21,6 +22,7 @@
     "dev": "tsx watch src/server/index.ts",
     "mcp": "tsx src/mcp/server.ts",
     "smoke": "tsx scripts/smoke.ts",
+    "selftest": "tsx scripts/selftest.ts",
     "postinstall": "playwright install chromium",
     "login:all": "tsx scripts/login-all.ts",
     "whoami": "tsx scripts/whoami.ts",

@@ -203,7 +203,7 @@ check('a post with no template id is rejected',
 check('an unapproved template id is rejected',
   !g('Shipped 3 fixes today.', { templateId: 'linkedin.made-this-up' }).pass);
 
-// The second source of authority. Crew HQ writes a post, a chief reviews it,
+// The second source of authority. An upstream system writes a post, reviews it,
 // HQ's content law checks it in code, HQ's surface gate rules on it, and the
 // founder's door opens for that specific deliverable — then the rail carries
 // it. Requiring a template match on top of that chain would not add safety; it

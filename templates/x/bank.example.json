@@ -1,0 +1,78 @@
+{
+  "platform": "x",
+  "kind": "post",
+  "note": "Copy to templates/x/bank.json and make these yours. That file is git-ignored.",
+  "templates": [
+    {
+      "id": "x.one-number",
+      "name": "One number",
+      "when": "A single real metric is the whole post.",
+      "skeleton": "{{the_number_in_context}}\n{{what_it_means}}",
+      "slots": {
+        "the_number_in_context": "The number and what it is measuring, in one line.",
+        "what_it_means": "One line of interpretation. No call to action."
+      },
+      "constraints": {
+        "maxChars": 280,
+        "requiresNumber": true
+      }
+    },
+    {
+      "id": "x.correction",
+      "name": "The correction",
+      "when": "You were wrong about something in public and now know better.",
+      "skeleton": "{{what_you_said_before}}\n{{what_is_actually_true}}\n{{what_changed_your_mind}}",
+      "slots": {
+        "what_you_said_before": "The claim, stated without softening it.",
+        "what_is_actually_true": "The correction.",
+        "what_changed_your_mind": "The specific evidence."
+      },
+      "constraints": {
+        "maxChars": 280
+      }
+    },
+    {
+      "id": "x.build-note",
+      "name": "Build note",
+      "when": "A small concrete thing you shipped or fixed today.",
+      "skeleton": "{{what_you_did}}\n{{the_detail_that_makes_it_interesting}}",
+      "slots": {
+        "what_you_did": "Past tense, specific, one line.",
+        "the_detail_that_makes_it_interesting": "The non-obvious part. If there isn't one, do not post."
+      },
+      "constraints": {
+        "maxChars": 280
+      }
+    },
+    {
+      "id": "x.breakdown-thread",
+      "name": "Breakdown thread",
+      "when": "Something needs sequence to make sense. Numbered 1/, 2/, and split per tweet.",
+      "skeleton": "1/ {{the_claim}}\n2/ {{the_setup}}\n3/ {{what_happened}}\n4/ {{what_it_cost}}\n5/ {{what_you_would_do_differently}}",
+      "slots": {
+        "the_claim": "The whole thread in one line. If this line is not worth reading, nothing below it will be read.",
+        "the_setup": "The situation, briefly.",
+        "what_happened": "The event, concretely.",
+        "what_it_cost": "A real quantity.",
+        "what_you_would_do_differently": "The actual change, or an honest admission that you would do it again."
+      },
+      "constraints": {
+        "isThread": true,
+        "perTweet": true
+      }
+    },
+    {
+      "id": "x.reply-worthy-question",
+      "name": "A question you actually want answered",
+      "when": "You genuinely do not know, and the answer would change what you build. Never as engagement bait.",
+      "skeleton": "{{the_context_that_makes_it_a_real_question}}\n{{the_question}}",
+      "slots": {
+        "the_context_that_makes_it_a_real_question": "What you already tried. This is what separates it from bait.",
+        "the_question": "One question. Specific enough to answer in a sentence."
+      },
+      "constraints": {
+        "maxChars": 280
+      }
+    }
+  ]
+}

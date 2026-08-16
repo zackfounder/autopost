@@ -97,6 +97,21 @@ export const linkedin: PlatformAdapter = {
       'li:has(button[aria-label^="Accept" i])',
     ],
     acceptInvite: ['button[aria-label^="Accept" i]'],
+    invitationName: [
+      'a[href*="/in/"] span[aria-hidden="true"]',
+      '.invitation-card__title',
+      'a[href*="/in/"] strong',
+      'strong',
+      'a[href*="/in/"]',
+    ],
+    invitationHeadline: ['.invitation-card__subtitle', 'p', '.t-12'],
+    // What a signed-out page says where a profile would say a name.
+    signedOut: [
+      'main :text-is("Join LinkedIn")',
+      'main :text-is("Sign in")',
+      'main button:has-text("Join now")',
+      'main a[href*="/signup"]',
+    ],
     withdrawInvite: ['button[aria-label*="Withdraw" i]', 'button:has-text("Withdraw")'],
     sentInviteCard: ['li:has(button[aria-label*="Withdraw" i])', 'div.invitation-card'],
 
@@ -500,11 +515,21 @@ export const linkedin: PlatformAdapter = {
     await readPage(page, 3);
     await dwell();
 
+    // The authwall is HTTP 200 and has an <h1> like any other page — "Join
+    // LinkedIn" reads as a person's name to a selector that only asks for h1,
+    // so a dead session was reporting successful visits. Ask whether the page is
+    // asking us to sign in before believing anything else on it.
+    if (this.loggedOutPatterns.test(page.url())) {
+      return { ok: false, url, name: null, headline: null, error: 'signed out — LinkedIn served the authwall' };
+    }
+    const signedOut = await firstVisible(page, this.sel.signedOut!, 1_500);
+    if (signedOut) {
+      return { ok: false, url, name: null, headline: null, error: 'signed out — the page is asking us to join or sign in' };
+    }
+
     const name = await page.locator(this.sel.profileName!.join(', ')).first().innerText().catch(() => null);
     const headline = await page.locator(this.sel.profileHeadline!.join(', ')).first().innerText().catch(() => null);
 
-    // An authwall renders a page with no name on it, and reporting that as a
-    // successful visit hides a logged-out session behind a green tick.
     if (!name) return { ok: false, url, name: null, headline: null, error: 'no profile rendered — logged out, or the profile is gone' };
     return { ok: true, url, name: name.trim(), headline: headline?.trim() ?? null };
   },
@@ -522,8 +547,19 @@ export const linkedin: PlatformAdapter = {
       const card = cards.nth(i);
       const raw = ((await card.innerText().catch(() => '')) ?? '').trim();
       if (!raw) continue;
-      const [first = '', second = ''] = raw.split('\n').map((l) => l.trim()).filter(Boolean);
-      out.push({ ref: `${first}|${raw.slice(0, 40)}`, name: first || null, headline: second || null, index: i });
+
+      // Ask the card for its name element rather than slicing its text. When a
+      // card renders inline, innerText is one run — "Aisha Bello Founder, ...
+      // Accept Ignore" — and that whole string became the "name" that
+      // acceptInvitation then tried to match a card by.
+      const name = (await card.locator(this.sel.invitationName!.join(', ')).first()
+        .innerText().catch(() => null))?.trim()
+        ?? firstMeaningfulLine(raw);
+      const headline = (await card.locator(this.sel.invitationHeadline!.join(', ')).first()
+        .innerText().catch(() => null))?.trim()
+        ?? null;
+
+      out.push({ ref: `${name ?? 'unknown'}|${raw.slice(0, 40)}`, name, headline, index: i });
     }
     return out;
   },
@@ -590,12 +626,21 @@ export const linkedin: PlatformAdapter = {
       await sleep(randInt(800, 1600));
 
       // LinkedIn asks again in a dialog whose confirm button is also "Withdraw".
-      const confirm = page.locator('[role="dialog"] button').filter({ hasText: /^\s*Withdraw\s*$/ }).last();
-      if (await confirm.isVisible({ timeout: 4_000 }).catch(() => false)) {
-        await confirm.click();
+      const confirmButton = page.locator('[role="dialog"] button').filter({ hasText: /^\s*Withdraw\s*$/ }).last();
+      if (!(await confirmButton.isVisible({ timeout: 4_000 }).catch(() => false))) {
+        return { ok: false, withdrawn, error: 'the withdraw confirmation never appeared' };
+      }
+      await confirmButton.click();
+      await sleep(randInt(2000, 3500));
+
+      // Proof, not optimism. Counting the click instead of the outcome reported
+      // ten withdrawals against the rate limiter while the list sat untouched —
+      // it burned the quota it exists to protect and said it had saved it.
+      const after = await cards.count().catch(() => count);
+      if (after >= count) {
+        return { ok: false, withdrawn, error: 'clicked Withdraw but the invitation is still listed' };
       }
       withdrawn++;
-      await sleep(randInt(2000, 3500));
     }
     return { ok: true, withdrawn };
   },
@@ -712,6 +757,18 @@ async function openPost(page: Page, url: string): Promise<boolean> {
     'main article',
   ], 8_000);
   return body !== null;
+}
+
+/**
+ * The first line of a card that is plausibly a person's name.
+ *
+ * Last resort, for a card that renders with no name element at all. Button
+ * labels sit in the same text run, so they are dropped.
+ */
+function firstMeaningfulLine(raw: string): string | null {
+  const skip = /^(accept|ignore|withdraw|message|connect|follow|pending)$/i;
+  const line = raw.split('\n').map((l) => l.trim()).filter((l) => l && !skip.test(l))[0];
+  return line ?? null;
 }
 
 /**

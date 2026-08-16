@@ -26,6 +26,9 @@ function flag(n: string): string | undefined {
 
 const platform = flag('platform') ?? 'linkedin';
 const proxy = flag('proxy');
+// --auto: no terminal question. Used by the browser setup wizard, where the
+// person is looking at a web page, not at this shell.
+const auto = args.includes('--auto');
 
 if (!name || !isPlatformId(platform)) {
   console.error('usage: npm run login -- <account-name> --platform <platform> [--proxy <url>] [--reset]');
@@ -70,6 +73,35 @@ console.log('Nothing is typed for you and no credentials are read.\n');
 // The person at the keyboard knows when they are logged in. Ask them.
 const deadline = Date.now() + 20 * 60_000;
 let state = observeLogin(session);
+
+if (auto) {
+  // Watch, never navigate. observeLogin only reads the address bar, so this
+  // cannot interrupt a 2FA form the way an early navigation once did.
+  //
+  // Three consecutive reads, not one: the URL passes through /feed briefly on
+  // the way to a challenge, and a single sample calls that a finished login.
+  console.log('Waiting for you to finish logging in (this window is watching, not touching).');
+  let streak = 0;
+  while (Date.now() < deadline && streak < 3) {
+    await new Promise((r) => setTimeout(r, 3_000));
+    streak = observeLogin(session) === 'ok' ? streak + 1 : 0;
+  }
+  if (streak < 3) {
+    console.error('Gave up waiting. The window is still open — rerun when you are logged in.');
+    process.exit(1);
+  }
+  // One navigation, now that it looks finished, to prove the session persisted
+  // rather than living only in the tab.
+  if ((await checkLogin(session)) !== 'ok') {
+    console.error('The platform still says logged out. Leaving the window open — rerun when you are in.');
+    process.exit(1);
+  }
+  const who = await whoAmI(session);
+  setAccountStatus(account.id, 'ok', who ?? undefined);
+  console.log(`logged in${who ? ` as ${who}` : ''}. Session saved — you can close the window.`);
+  await session.close();
+  process.exit(0);
+}
 
 const rl = createInterface({ input: stdin, output: stdout });
 let answered = false;

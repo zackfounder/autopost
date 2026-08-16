@@ -2,3 +2,14 @@ node_modules/
 data/
 .env
 *.log
+
+# Your brief and your approved shapes. The .example versions ship; these are
+# yours, they stay on this machine, and the loaders prefer them when present.
+instructions/GLOBAL.md
+instructions/linkedin.md
+instructions/x.md
+templates/*/bank.json
+
+# Local integrations that are nobody else's business.
+scripts/rail.ts
+com.crewhq.rail.plist

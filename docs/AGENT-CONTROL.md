@@ -67,7 +67,7 @@ shape, add a sixth object. No code change.
 
 ## 3. `src/content/gate.ts` — the part that cannot be argued with
 
-Ported from crew-hq's `checkContent`, and it exists for the reason recorded there:
+Ported from an earlier `checkContent`, and it exists for the reason recorded there:
 prompting alone did not hold. A test post correctly declared its own account type
 and then broke that exact rule in the body, and the chief model passed it. So every
 rule that *can* be checked by code is checked by code, on every path, every time.

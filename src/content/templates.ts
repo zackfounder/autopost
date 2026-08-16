@@ -58,8 +58,13 @@ export function loadTemplates(force = false): Map<string, Template> {
   for (const platformDir of readdirSync(TEMPLATE_DIR, { withFileTypes: true })) {
     if (!platformDir.isDirectory()) continue;
     const dir = join(TEMPLATE_DIR, platformDir.name);
-    for (const file of readdirSync(dir)) {
-      if (!file.endsWith('.json')) continue;
+    const files = readdirSync(dir).filter((f) => f.endsWith('.json'));
+    // Your own bank is git-ignored, so a fresh clone has only bank.example.json.
+    // Load the examples ONLY when nothing real is there — otherwise a clone that
+    // wrote its own bank would silently run with ten approved shapes instead of
+    // five, half of them shapes nobody chose.
+    const mine = files.filter((f) => !f.endsWith('.example.json'));
+    for (const file of (mine.length > 0 ? mine : files)) {
       const bank = BankSchema.parse(JSON.parse(readFileSync(join(dir, file), 'utf8')));
       for (const t of bank.templates) {
         if (map.has(t.id)) {
