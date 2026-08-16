@@ -41,6 +41,8 @@ Two commands. You need **Node 22.5+** and one **free** Groq key from
 [console.groq.com/keys](https://console.groq.com/keys) — no card, about a minute.
 
 ```bash
+git clone https://github.com/zackfounder/autopost.git
+cd autopost
 npm install
 npm run setup
 ```
