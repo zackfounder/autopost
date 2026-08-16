@@ -39,8 +39,9 @@ export async function openSession(
   if (existing && !existing.page.isClosed()) return existing;
 
   const context = await chromium.launchPersistentContext(account.profile_dir, {
-    // An account can veto headless. Quora's Cloudflare check fails a headless
-    // browser every time, so for that one the window has to be real.
+    // An account can veto headless. A site behind a bot check will serve a
+    // headless browser a security page instead of the site, and LinkedIn is
+    // markedly more suspicious of one even when it does let you in.
     headless: account.force_headed ? false : (opts.headless ?? env.headless),
     viewport: { width: 1440, height: 900 },
     locale: 'en-US',
@@ -145,9 +146,9 @@ export async function checkLogin(session: Session): Promise<LoginState> {
   // is exactly how a signed-out X account reported itself logged in.
   const url = await settledUrl(page);
 
-  // A bot check is not a verdict on the session. Quora's Cloudflare page says
-  // nothing about whether anyone is signed in, and reading it as 'logged out'
-  // told the owner to redo a login that was already fine.
+  // A bot check is not a verdict on the session. An interstitial says nothing
+  // about whether anyone is signed in, and reading it as 'logged out' tells the
+  // owner to redo a login that was already fine.
   const title = await page.title().catch(() => '');
   if (/just a moment|checking your browser|security verification/i.test(title)) {
     return 'checkpoint';
@@ -164,10 +165,10 @@ export async function checkLogin(session: Session): Promise<LoginState> {
     // guesses and reported LinkedIn and X as logged out when both were fine.
     state = adapter.loggedInPatterns.test(url) ? 'ok' : 'logged_out';
   } else if (adapter.loggedInSelectors?.length) {
-    // The URL is not enough. Quora and Indie Hackers put their login in a modal
-    // over the homepage, so the address bar reads the same signed in or out —
-    // which marked both accounts 'ok' when nobody had logged in at all. Ask the
-    // page for something only an authenticated session renders.
+    // The URL is not enough for a platform whose login is a modal over the
+    // homepage: the address bar reads the same signed in or out, which marks an
+    // account 'ok' when nobody has logged in at all. Ask the page for something
+    // only an authenticated session renders.
     let seen = false;
     for (const sel of adapter.loggedInSelectors) {
       try {
@@ -203,8 +204,8 @@ export async function whoAmI(session: Session): Promise<string | null> {
         .catch(() => null);
       return href ? href.replace(/^\//, '') : null;
     }
-    // Quora and Indie Hackers expose the handle in the profile menu, which is not
-    // worth a fragile selector. The account name you chose is identity enough.
+    // Anywhere else the handle sits behind a profile menu, which is not worth a
+    // fragile selector. The account name you chose is identity enough.
     return null;
   } catch {
     return null;

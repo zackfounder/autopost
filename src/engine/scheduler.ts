@@ -8,6 +8,7 @@ import {
   setCampaignStatus,
 } from '../db/index.ts';
 import { getAction } from '../actions/index.ts';
+import { isPlatformId } from '../platforms/index.ts';
 import { checkQuota, insideWorkingHours, isGloballyPaused, loadPacing } from './limits.ts';
 import { runStep } from './runner.ts';
 import { runJob, type JobOutcome } from './jobs.ts';
@@ -116,6 +117,13 @@ export class Engine {
 
       const account = getAccount(accountId);
       if (!account) continue;
+      // A row can point at a platform this build no longer has an adapter for.
+      // Skipping is right: the alternative is throwing inside the tick and
+      // taking every other account's work down with it.
+      if (!isPlatformId(account.platform)) {
+        this.log(`skipping ${account.name}: platform "${account.platform}" is no longer supported`);
+        continue;
+      }
 
       const job = nextDueJob(accountId);
       const work = job ? null : this.pickWork(account, accountCampaigns);

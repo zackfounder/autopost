@@ -1,5 +1,6 @@
 import { initSchema, getAccountByName, listAccounts } from '../src/db/index.ts';
 import { createJob, listJobs, deleteJob, setJobState } from '../src/db/content.ts';
+import { JOB_KINDS } from '../src/engine/jobs.ts';
 import { getPlatform } from '../src/platforms/index.ts';
 
 /**
@@ -46,7 +47,7 @@ if (cmd === 'list' || !cmd) {
 if (cmd === 'add') {
   const accountName = args[1];
   const kind = args[2];
-  const valid = ['generate_post', 'publish_due', 'engage_feed', 'send_dm'];
+  const valid = [...JOB_KINDS] as string[];
   if (!accountName || !kind || !valid.includes(kind)) {
     console.error(`usage: npm run schedule -- add <account> <${valid.join('|')}> [--every 6h] [...]`);
     process.exit(1);
@@ -66,11 +67,33 @@ if (cmd === 'add') {
     console.error(`${adapter.displayName} has no DM capability.`);
     process.exit(1);
   }
+  // The targeted kinds are only real if the adapter implements them. Catching
+  // it here beats scheduling a job that fails silently at 09:15 tomorrow.
+  const NEEDS: Record<string, keyof typeof adapter> = {
+    engage_post: 'commentOnPost',
+    grow_network: 'listInvitations',
+    visit_profiles: 'visitProfile',
+    follow_targets: 'follow',
+    reply_comments: 'readPostComments',
+  };
+  const needed = NEEDS[kind];
+  if (needed && typeof adapter[needed] !== 'function') {
+    console.error(`${adapter.displayName} does not support "${kind}".`);
+    process.exit(1);
+  }
 
   const payload: Record<string, unknown> = {};
-  for (const key of ['brief', 'facts', 'templateId', 'targetRef', 'criteria', 'target', 'body']) {
+  for (const key of ['brief', 'facts', 'templateId', 'targetRef', 'criteria', 'target', 'body',
+                     'url', 'urls', 'reaction', 'comment', 'postUrl']) {
     const v = flag(key);
     if (v) payload[key] = v;
+  }
+  // --repost alone is a plain repost; --repost "<text>" is one with your line on top.
+  if (args.includes('--repost')) payload.repost = flag('repost') ?? true;
+  if (flag('accept-max')) payload.maxAccept = Number(flag('accept-max'));
+  if (flag('withdraw-after')) payload.withdrawAfterDays = Number(flag('withdraw-after'));
+  if (flag('max') && ['visit_profiles', 'follow_targets', 'reply_comments'].includes(kind)) {
+    payload.max = Number(flag('max'));
   }
   if (flag('max')) payload.maxActions = Number(flag('max'));
   if (flag('scan')) payload.scan = Number(flag('scan'));

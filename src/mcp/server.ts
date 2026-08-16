@@ -6,6 +6,7 @@ import { initSchema } from '../db/index.ts';
 import { describeActions } from '../actions/index.ts';
 import { loadWorkflow, validateWorkflow, WorkflowSchema } from '../engine/workflow.ts';
 import { engine } from '../engine/scheduler.ts';
+import { JOB_KINDS } from '../engine/jobs.ts';
 import { openSession } from '../browser/session.ts';
 import { describePlatforms, getPlatform } from '../platforms/index.ts';
 import { loadTemplates } from '../content/templates.ts';
@@ -270,7 +271,7 @@ server.tool(
     'shapes per platform, and a post whose template id is not in this list is rejected ' +
     'by code before it can reach an account. You choose which shape fits and write the ' +
     'words inside it; you cannot invent a sixth shape.',
-  { platform: z.enum(['linkedin', 'x', 'quora', 'indiehackers']).optional() },
+  { platform: z.enum(['linkedin', 'x']).optional() },
   async ({ platform }) => {
     const all = [...loadTemplates(true).values()];
     return text(platform ? all.filter((t) => t.platform === platform) : all);
@@ -282,7 +283,7 @@ server.tool(
   'The operating brief you are working under for a platform: voice, hard rules, what ' +
     'is never allowed, and the engagement bar. instructions/GLOBAL.md plus the platform ' +
     'file. Read this before writing anything for that account.',
-  { platform: z.enum(['linkedin', 'x', 'quora', 'indiehackers']) },
+  { platform: z.enum(['linkedin', 'x']) },
   async ({ platform }) => text(loadInstructions(platform)),
 );
 
@@ -292,7 +293,7 @@ server.tool(
     'violation. Use this to iterate on wording before committing. The same checks run ' +
     'again at publish time, so passing here is necessary but the check is never skipped later.',
   {
-    platform: z.enum(['linkedin', 'x', 'quora', 'indiehackers']),
+    platform: z.enum(['linkedin', 'x']),
     kind: z.enum(['post', 'dm', 'comment', 'reply']).default('post'),
     body: z.string(),
     templateId: z.string().optional(),
@@ -309,12 +310,12 @@ server.tool(
     'there must not appear in the copy.',
   {
     account: z.string(),
-    platform: z.enum(['linkedin', 'x', 'quora', 'indiehackers']),
+    platform: z.enum(['linkedin', 'x']),
     kind: z.enum(['post', 'dm', 'comment', 'reply']).default('post'),
     brief: z.string().describe('what this piece needs to accomplish, in your own words'),
     facts: z.string().optional().describe('the ONLY verified facts the copy may use'),
     templateId: z.string().optional(),
-    targetRef: z.string().optional().describe('Quora question URL / IH group URL / DM target'),
+    targetRef: z.string().optional().describe('the post/profile URL this content is aimed at, or a DM target'),
   },
   async ({ account, platform, kind, brief, facts, templateId, targetRef }) => {
     const acc = getAccountByName(account);
@@ -399,14 +400,22 @@ server.tool(
 
 server.tool(
   'schedule_job',
-  'Schedule recurring work for an account. Kinds: "generate_post" (writes a draft and ' +
-    'queues it), "publish_due" (publishes one queued item per run), "engage_feed" (reads ' +
-    'the feed, decides, likes/upvotes/comments), "send_dm". Recurrence is "90m", "6h", ' +
-    '"1d" — it re-arms with up to 20% jitter so it never fires at the same minute daily. ' +
-    'Everything still obeys working hours and rate limits.',
+  'Schedule recurring work for an account.\n' +
+    'Content: "generate_post" (writes a draft and queues it), "publish_due" (publishes one ' +
+    'queued item per run).\n' +
+    'Feed: "engage_feed" (reads the feed, decides, likes/comments), "send_dm".\n' +
+    'Targeted (LinkedIn, on a URL you name): "engage_post" {url, reaction?, comment?|brief?, ' +
+    'repost?} — react, comment and/or share one specific post; "reply_comments" {postUrl?, max} ' +
+    '— answer the comments on your own posts, defaulting to your most recent ones; ' +
+    '"grow_network" {maxAccept, criteria?, withdrawAfterDays?} — accept the invitations worth ' +
+    'accepting and withdraw stale ones you sent; "visit_profiles" {urls} — profile visits, ' +
+    'which the other person is notified of; "follow_targets" {urls}.\n' +
+    'Recurrence is "90m", "6h", "1d" — it re-arms with up to 20% jitter so it never fires at ' +
+    'the same minute daily. Everything still obeys working hours and rate limits, and every ' +
+    'word these produce goes through the content gate.',
   {
     account: z.string(),
-    kind: z.enum(['generate_post', 'publish_due', 'engage_feed', 'send_dm']),
+    kind: z.enum(JOB_KINDS),
     recurrence: z.string().optional().describe('"90m" | "6h" | "1d"; omit for one-shot'),
     payload: z.record(z.unknown()).optional(),
     runAt: z.string().optional(),
@@ -420,6 +429,17 @@ server.tool(
     }
     if (kind === 'send_dm' && !adapter.can.dm) {
       throw new Error(`${adapter.displayName} has no DM capability`);
+    }
+    const NEEDS: Record<string, keyof typeof adapter> = {
+      engage_post: 'commentOnPost',
+      grow_network: 'listInvitations',
+      visit_profiles: 'visitProfile',
+      follow_targets: 'follow',
+      reply_comments: 'readPostComments',
+    };
+    const needed = NEEDS[kind];
+    if (needed && typeof adapter[needed] !== 'function') {
+      throw new Error(`${adapter.displayName} does not support "${kind}"`);
     }
     return text(
       createJob({ accountId: acc.id, kind, payload: payload ?? {}, recurrence: recurrence ?? null, runAt }),

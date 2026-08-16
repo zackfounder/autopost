@@ -30,12 +30,10 @@ const headed = process.argv.includes('--headed');
  * count, correctly: the home timeline is not a profile.
  */
 const SELF_URL: Record<string, string> = {
+  // /in/me/ redirects to whoever is signed in. Worth far more than any selector:
+  // every attempt to find "your" profile link in the DOM instead returned a
+  // stranger from the feed, once with a 15,026-follower count attached.
   linkedin: 'https://www.linkedin.com/in/me/',
-  // Quora has the same idea under a different name: bare /profile redirects to
-  // whoever is signed in. Worth far more than any selector — three separate
-  // attempts to find this link in the DOM each returned a stranger from the
-  // feed, once with a 15,026-follower count attached.
-  quora: 'https://www.quora.com/profile',
 };
 
 /**
@@ -43,20 +41,15 @@ const SELF_URL: Record<string, string> = {
  *
  * Every selector here MUST be anchored to the header or side nav. An unanchored
  * `a[href*="/profile/"]` matches the first author in the feed, and this script
- * duly went and read a stranger's Quora profile — reporting their 15,026
- * followers as ours. A profile link in the feed is never yours.
+ * duly went and read a stranger's profile — reporting their 15,026 followers as
+ * ours. A profile link in the feed is never yours.
  */
 const PROFILE_LINK: Record<string, string[]> = {
   x: ['[data-testid="AppTabBar_Profile_Link"]', 'a[aria-label="Profile"]'],
-  // Indie Hackers renders no profile link at all in its nav. Identity there
-  // comes from the avatar's alt text; see SELF_NAME.
-  indiehackers: [],
 };
 
 /** Where a platform states who you are without linking anywhere. */
-const SELF_NAME: Record<string, string> = {
-  indiehackers: 'img[alt^="Avatar for" i]',
-};
+const SELF_NAME: Record<string, string> = {};
 
 async function selfUrl(page: import('playwright').Page, platform: string, home: string): Promise<string> {
   if (SELF_URL[platform]) return SELF_URL[platform];

@@ -6,7 +6,7 @@
  * This asks the database which are actually missing and only opens those.
  *
  *   npm run login:all              every platform that has no live session
- *   npm run login:all -- --only quora,indiehackers
+ *   npm run login:all -- --only linkedin
  *   npm run login:all -- --force   re-check the ones already connected too
  *
  * It never sees a password, never types credentials, never touches a 2FA code.
@@ -38,8 +38,6 @@ const WANTED: { platform: string; name: string; label: string }[] = [
   { platform: 'linkedin',     name: 'main',          label: 'LinkedIn — your personal account' },
   { platform: 'x',            name: 'main-x',        label: 'X — your personal account' },
   { platform: 'x',            name: 'crew-x',        label: 'X — the Crew company account' },
-  { platform: 'quora',        name: 'main-quora',    label: 'Quora' },
-  { platform: 'indiehackers', name: 'main-ih',       label: 'Indie Hackers' },
 ];
 
 initSchema();
@@ -128,6 +126,6 @@ rl.close();
 console.log('Where things stand:\n');
 spawnSync('npx', ['tsx', 'scripts/accounts.ts'], { stdio: 'inherit' });
 console.log(
-  '\nQuora and Indie Hackers need a real account on the platform first.\n' +
-  'If one of those failed, register there in a normal browser, then rerun this.\n',
+  '\nAnything that failed needs a real account on that platform first.\n' +
+  'Register in a normal browser, then rerun this.\n',
 );

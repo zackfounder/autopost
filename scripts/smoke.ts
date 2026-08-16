@@ -172,10 +172,10 @@ const { createJob, nextDueJob, finishJob, nextRunAt, createContent, recentPublis
   await import('../src/db/content.ts');
 
 console.log('\n6. Platforms and template bank');
-check('all four platforms load', describePlatforms().length === 4, PLATFORM_IDS);
+check('both platforms load', describePlatforms().length === 2, PLATFORM_IDS);
 check('X caps a post at 280 chars', getPlatform('x').rules.post.maxChars === 280);
 check('LinkedIn caps a post at 6 lines', getPlatform('linkedin').rules.post.maxLines === 6);
-check('Quora and Indie Hackers cannot DM', !getPlatform('quora').can.dm && !getPlatform('indiehackers').can.dm);
+check('only linkedin and x exist', PLATFORM_IDS.join(',') === 'linkedin,x');
 
 loadTemplates(true);
 for (const p of PLATFORM_IDS) {
@@ -309,6 +309,55 @@ createContent({
 });
 check('published bodies feed the repetition check',
   recentPublishedBodies(account.id).includes(goodLinkedIn));
+
+console.log('\n14. LinkedIn targeted actions');
+const { runJob, JOB_KINDS } = await import('../src/engine/jobs.ts');
+const { targetedActions } = await import('../src/platforms/index.ts');
+const { ageInDays } = await import('../src/platforms/linkedin.ts');
+const { loadLimitsFor, repairSeededLimits, DEFAULT_LIMITS: DEF } = await import('../src/engine/limits.ts');
+
+const liActions = targetedActions(getPlatform('linkedin'));
+for (const m of ['reactToPost', 'commentOnPost', 'repost', 'follow', 'visitProfile',
+                 'listInvitations', 'withdrawStaleInvitations', 'readPostComments', 'replyToComment']) {
+  check(`linkedin implements ${m}`, liActions.includes(m));
+}
+check('x does not claim LinkedIn-only actions', !targetedActions(getPlatform('x')).includes('listInvitations'));
+
+// Every kind the CLI and MCP offer must actually be handled. An unhandled kind
+// schedules fine and then fails at 09:15 tomorrow with "unknown job kind".
+const jobDeps = {
+  page: {} as never,
+  account,
+  ai: mockAiClient(),
+  pacing: DEFAULT_PACING,
+  log: () => {},
+};
+const unhandled: string[] = [];
+for (const kind of JOB_KINDS) {
+  const out = await runJob(jobDeps, { kind, payload: '{}' } as never).catch((e: Error) => ({
+    ok: false, detail: {}, error: e.message,
+  }));
+  if ((out.error ?? '').includes('unknown job kind')) unhandled.push(kind);
+}
+check('every scheduleable job kind is handled by runJob', unhandled.length === 0, unhandled);
+
+// Withdrawal reads the card's own wording. Anything it cannot parse must read as
+// brand new, or a fresh invite gets withdrawn and the weekly quota is wasted.
+check('"Sent 3 weeks ago" is 21 days', ageInDays('Sent 3 weeks ago') === 21);
+check('"Sent 2 months ago" is 60 days', ageInDays('Sent 2 months ago') === 60);
+check('"Sent 5 hours ago" is 0 days', ageInDays('Sent 5 hours ago') === 0);
+check('unparseable card text is treated as brand new', ageInDays('Pending') === 0);
+
+console.log('\n15. Platform caps outrank the seeded defaults');
+setSetting('limits', DEF);
+check('a seeded limits row is recognised and cleared', repairSeededLimits() === true);
+setSetting('limits', { invite: { perDay: 3 } });
+check('an edited limits row is left alone', repairSeededLimits() === false);
+setSetting('limits', {});
+const liLimits = loadLimitsFor('linkedin');
+check('LinkedIn keeps its own visit cap, not the generic one',
+  liLimits.visit_profile?.perDay === 40, liLimits.visit_profile);
+check('the new targeted caps are in force', liLimits.react_post?.perDay === 20 && liLimits.repost?.perDay === 3);
 
 console.log(`\n${failures === 0 ? 'PASS' : `FAIL (${failures})`} — db at ${process.env.DB_PATH}`);
 process.exit(failures === 0 ? 0 : 1);

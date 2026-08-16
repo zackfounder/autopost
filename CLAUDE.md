@@ -1,9 +1,13 @@
 # autopost
 
-A local social engine for four accounts — LinkedIn, X, Quora, Indie Hackers. One real
-browser per account holding a real session, rolling rate caps, human pacing. Agents
-post, DM and engage with feeds autonomously, bounded by an approved template bank and
-a content gate enforced in code.
+A local social engine for **LinkedIn and X**. One real browser per account holding a
+real session, rolling rate caps, human pacing. Agents post, comment, react, repost,
+reply, DM and manage invitations autonomously, bounded by an approved template bank
+and a content gate enforced in code.
+
+Quora and Indie Hackers were removed on 2026-08-16. An `accounts` row can still point
+at them; `isPlatformId()` guards every read path and `npm run accounts -- forget <n>`
+removes the row.
 
 **Read [`docs/HANDOFF.md`](docs/HANDOFF.md) before changing anything.** It is the
 complete mental model: the two queues, the exact tick loop, the content pipeline, the
@@ -77,7 +81,9 @@ One tick = at most one action, then a 35–140s human gap.
 
 - **Every platform selector is unverified** against a live session. Treat selector
   bugs as expected. Each platform needs one supervised calibration run (headed
-  browser, one job, fix what the log says it could not find). Quora needs the most.
+  browser, one job, fix what the log says it could not find). The targeted LinkedIn
+  actions — reactions flyout, invitation manager, comment replies — are the newest
+  and least exposed.
 - **`FeedItem.index` is positional.** If a feed reflows between read and engage the
   index can point at a different post. Adapters guard with `isVisible()` and bail, but
   matching on permalink instead of index is the real fix.
@@ -105,6 +111,18 @@ npm run mcp        # MCP server on stdio (23 tools)
 Never run the engine against a real account to test a code change. `npm run smoke`
 covers the engine; the browser layer needs a deliberate, watched, headed run.
 
+## The security model
+
+- The dashboard page **contains the API token** so the browser can call the API, and
+  that token can publish to a real account. `/` is therefore only unauthenticated
+  because the socket is loopback-only.
+- `BIND_HOST` defaults to `127.0.0.1`. Non-loopback **with an empty `API_TOKEN` is a
+  refusal to start**, not a warning, and the dashboard route demands the token too.
+- Bearer comparison is `timingSafeEqual` on equal-length buffers.
+- `.env` is written mode `600` by setup; `npm run doctor` re-checks it.
+- `data/` (database + browser profiles) is git-ignored. A profile directory IS a
+  logged-in session — treat it exactly like a password.
+
 ## Where to make a change
 
 | To add | Do |
@@ -114,4 +132,5 @@ covers the engine; the browser layer needs a deliberate, watched, headed run.
 | A hard-enforced rule | `src/content/gate.ts` **and** `gateRulesForPrompt()` so the model is told **and** a smoke check. |
 | A funnel action | An `ActionDef` in `src/actions/`, registered in `actions/index.ts`. Auto-exposed via `list_actions`. |
 | A platform | `src/platforms/<id>.ts` + `templates/<id>/` + `instructions/<id>.md`. |
-| A job kind | A branch in `runJob()`, the enum in `scripts/schedule.ts`, and the `schedule_job` MCP tool. |
+| A job kind | A branch in `runJob()` **and** an entry in `JOB_KINDS` — the CLI and the MCP tool both read that array, and a smoke check asserts every kind in it is handled. |
+| A targeted platform action | An optional method on `PlatformAdapter`, implemented in the adapter, listed in `TARGETED` in `platforms/index.ts` so the capability matrix reports it, plus a cap in the adapter's `defaultLimits`. |

@@ -1,14 +1,17 @@
 # autopost
 
-**Self-hosted LinkedIn and X automation.** An AI agent that writes and publishes to
-your **LinkedIn profile and company page**, **X** (posts, threads, DMs), **Quora**
-and **Indie Hackers** — from your own logged-in browser, on your own machine.
+**Self-hosted LinkedIn and X automation.** An AI agent that runs your **LinkedIn**
+— profile and company page, posts, comments, reactions, reposts, DMs, invitations,
+replies to your own comment threads — and your **X** account, from your own
+logged-in browser, on your own machine.
 
-No platform API keys, no approved developer app, no monthly SaaS. One free LLM key
-(Groq) and a browser you log into yourself. Built on Linked Helper's architecture:
-one real browser per account holding a real session, rolling rate limits, human
-pacing. Agents post, DM and engage with feeds autonomously, bounded by an approved
-template bank and a content gate enforced in code.
+No platform API keys, no approved developer app, no monthly SaaS, nothing leaving
+your laptop. One free LLM key (Groq) and a browser you log into yourself.
+
+Built on Linked Helper's architecture: one real browser per account holding a real
+session, rolling rate limits, human pacing. The agent posts, engages and replies
+autonomously, bounded by an approved template bank and a content gate enforced in
+code with no bypass.
 
 Two docs before you touch anything:
 
@@ -18,27 +21,44 @@ Two docs before you touch anything:
 
 > Automating these platforms violates their terms of service. The realistic downside
 > is a restricted or banned account. The defaults here are a warm-up profile because
-> that is what keeps accounts alive. Indie Hackers is the one where damage is
-> permanent — its caps are the tightest for that reason.
+> that is what keeps accounts alive — one post a day, a handful of comments, gaps of
+> 35–140 seconds between actions. Raise them slowly, over weeks, or not at all.
 
 ---
 
-## What each account can do
+## What it does
 
-| | post | DM | feed | engage |
-|---|---|---|---|---|
-| **LinkedIn** | yes | yes | yes | like, comment |
-| **X** | yes, incl. threads | yes | yes | like |
-| **Quora** | yes (an *answer* to a question) | — | yes | upvote, comment |
-| **Indie Hackers** | yes (`Title\n\nBody`) | — | yes | upvote, comment |
+**LinkedIn — the full surface:**
 
-Plus the original LinkedIn outreach funnel (invite → filter → message → check
-replies), which shares the same browser and the same limits.
+| | |
+|---|---|
+| **Post** | to your profile, or as a company page you administer |
+| **Comment** | on any post you name, or on what the feed serves up |
+| **React** | like, celebrate, support, love, insightful, funny |
+| **Repost** | plain, or with your own line on top |
+| **Reply** | to the comments on your own posts — the thing everyone drops |
+| **DM** | 1st-degree connections |
+| **Invitations** | accept the ones worth accepting, withdraw stale ones you sent |
+| **Follow** | people and company pages |
+| **Profile visits** | they get notified you looked. Linked Helper's warm-up step |
+| **Delete** | remove a post you published, confirmed gone before it reports success |
+| **Outreach funnel** | invite → filter_connected → message → check_replies |
 
-## Setup
+**X:** posts and threads, DMs, feed reading, likes.
 
-Two commands. You need **Node 22.5+** and one **free** Groq key from
-[console.groq.com/keys](https://console.groq.com/keys) — no card, about a minute.
+Everything a model writes — post, comment, reply, DM, repost commentary — passes the
+content gate before it can reach an account, and again immediately before publishing.
+
+## Setup — about five minutes
+
+You need **Node 22.5+** and one **free** Groq key. That is the whole shopping list.
+
+| | | |
+|---|---|---|
+| 1 | Get a free key at [console.groq.com/keys](https://console.groq.com/keys) | ~1 min, no card |
+| 2 | `npm install` | ~2 min, downloads Chromium |
+| 3 | `npm run setup`, paste the key when asked | ~30 sec |
+| 4 | Log into LinkedIn in the window it opens | ~1 min |
 
 ```bash
 git clone https://github.com/zackfounder/autopost.git
@@ -48,8 +68,9 @@ npm run setup
 ```
 
 `setup` writes `.env`, generates the control-API token, takes your Groq key and
-proves it works, creates the database, and prints exactly what to run next. It is
-safe to re-run — anything already set is kept.
+proves it works against Groq before saving it, creates the database, and offers to
+open the LinkedIn login window right there. It is safe to re-run — anything already
+set is kept, and nothing is overwritten silently.
 
 <details>
 <summary>Why a free key is the default, and how to use a paid one</summary>
@@ -68,14 +89,32 @@ Then connect each account. **You log in yourself** — a real browser window ope
 waits. Nothing types a password, reads a credential, or touches 2FA.
 
 ```bash
-npm run login -- main-li    --platform linkedin
-npm run login -- main-x     --platform x
-npm run login -- main-quora --platform quora
-npm run login -- main-ih    --platform indiehackers
+npm run login -- main-li  --platform linkedin
+npm run login -- main-x   --platform x
 ```
 
 One account = one browser profile = one platform. The session lives in
 `data/profiles/<name>/` on this machine. Treat that directory as a credential.
+
+### What is secret, and what protects it
+
+Nothing here phones home. Everything — the database, the sessions, the keys — is a
+file on your machine.
+
+| | Where | Protected by |
+|---|---|---|
+| AI key + control token | `.env` | git-ignored, and `setup` sets it to mode `600` |
+| Logged-in sessions | `data/profiles/<name>/` | git-ignored. **This is the real crown jewel** — anyone with the directory is logged in as you |
+| Dashboard + control API | `localhost:4310` | bound to `127.0.0.1`, so nothing on your network can reach it |
+
+The dashboard hands the API token to whoever loads the page, and that token can
+publish to your real account — which is exactly why the socket is loopback-only. If
+you set `BIND_HOST` to anything reachable, the server **refuses to start** without an
+`API_TOKEN`, and the dashboard route starts demanding it too. `npm run doctor` checks
+all of this and tells you what is wrong.
+
+The one thing to keep in mind: `data/` is not in git, so it is also not in any
+backup that only covers your repo.
 
 ```bash
 npm run doctor                # is anything wrong? read-only, opens no browser
@@ -100,16 +139,30 @@ npm run schedule -- add main-li generate_post --every 1d \
   --facts "MRR 180. 12 trials. Shipped the Telegram loop Tuesday."
 npm run schedule -- add main-li publish_due --every 2h
 
+# answer the comments on your own posts, twice a day, at most 3 replies
+npm run schedule -- add main-li reply_comments --every 12h --max 3
+
+# accept the invitations worth accepting, and withdraw ones nobody answered
+npm run schedule -- add main-li grow_network --every 1d \
+  --criteria "founders, engineers and people who actually build things" \
+  --accept-max 10 --withdraw-after 21
+
 # engage with the X timeline three times a day, at most 3 actions each
 npm run schedule -- add main-x engage_feed --every 8h --max 3 \
   --criteria "builders posting real numbers or real technical detail"
 
-# Indie Hackers: comments only, tight
-npm run schedule -- add main-ih engage_feed --every 12h --max 2 --actions upvote,comment
+# one specific post: react, comment, and share it
+npm run schedule -- add main-li engage_post --at now \
+  --url "https://www.linkedin.com/feed/update/urn:li:activity:123" \
+  --reaction insightful \
+  --brief "agree with the retention point, add what we measured"
 
 npm run schedule -- list
 npm run schedule -- pause 3
 ```
+
+**Job kinds:** `generate_post`, `publish_due`, `engage_feed`, `send_dm`,
+`engage_post`, `reply_comments`, `grow_network`, `visit_profiles`, `follow_targets`.
 
 Recurrence is `90m` / `6h` / `1d`, re-armed with up to 20% jitter. Everything still
 obeys working hours and rate caps.
@@ -120,10 +173,10 @@ obeys working hours and rate caps.
 |---|---|
 | `npm run setup` | Write `.env`, generate the API token, verify the AI key, create the database. Re-runnable. |
 | `npm run doctor` | Read-only health check: node, keys, model, database, connected accounts |
-| `npm run smoke` | 59 checks: URL handling, workflow traps, queue machine, rate limiter, **the gate**, template rotation, thread splitting, job queue. No credentials, no network. |
-| `npm run db:init` | Create the database, seed warm-up limits |
+| `npm run smoke` | 74 checks: URL handling, workflow traps, queue machine, rate limiter, **the gate**, template rotation, thread splitting, job queue. No credentials, no network. |
+| `npm run db:init` | Create the database |
 | `npm run login -- <name> --platform <p>` | Connect one account (interactive). `--proxy socks5://…` to pin an IP. |
-| `npm run accounts` | Read-only status of every account |
+| `npm run accounts` | Read-only status of every account. `-- forget <name>` removes one |
 | `npm run schedule -- …` | `list` / `add` / `pause` / `resume` / `rm` jobs |
 | `npm run campaign -- <file.json>` | Load a LinkedIn outreach funnel |
 | `npm run leads -- csv <f> --campaign 1` | Import leads |
@@ -186,19 +239,22 @@ docs/                 AGENT-CONTROL.md, ARCHITECTURE.md
 
 ## What is verified and what is not
 
-**Verified** (`npm run smoke` — 59 checks, no credentials): URL normalization; the three
+**Verified** (`npm run smoke` — 74 checks, no credentials): URL normalization; the three
 workflow-validation traps; the funnel queue end-to-end; the rolling rate limiter
 including that failed attempts don't consume quota; **13 separate content-gate
 checks** including template binding, banned words, placeholders, outreach mechanics
 and near-duplicates; template rotation fairness over 6 picks; X thread splitting and
-per-tweet caps; instructions loading for all four platforms; generation failing
+per-tweet caps; instructions loading for both platforms; every scheduleable job kind
+being handled; invitation-age parsing; platform caps outranking the seeded defaults;
+generation failing
 closed; the job queue and recurrence parsing. Typecheck is clean and the MCP server
 enumerates its tools.
 
 **Not verified: every platform selector.** `src/platforms/*.ts` has never run against
-a live logged-in session on any of the four. They are written defensively —
+a live logged-in session. They are written defensively —
 `data-testid` on X, `aria-label` and roles elsewhere, several candidates per target,
 never obfuscated class names — but each platform needs one supervised calibration
 run: log in, schedule one job, watch the browser, and fix whatever the engine log
-says it could not find. Quora will need the most work; it has no stable test-id
-convention. Every selector for a platform lives in that platform's single file.
+says it could not find. Every selector for a platform lives in that platform's
+single file, and the newer LinkedIn actions (reactions flyout, invitation manager,
+comment replies) have had the least exposure of all.

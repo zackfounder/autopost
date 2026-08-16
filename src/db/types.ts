@@ -1,7 +1,7 @@
 export interface Account {
   id: number;
   name: string;
-  /** linkedin | x | quora | indiehackers. Added by migrate(); old rows default to linkedin. */
+  /** linkedin | x. Added by migrate(); old rows default to linkedin. */
   platform: string;
   profile_dir: string;
   proxy: string | null;
@@ -15,7 +15,7 @@ export interface Account {
   self_url: string | null;
   /** The page where this account's post composer actually opens. */
   composer_url: string | null;
-  /** 1 when this platform refuses headless browsers (Quora, via Cloudflare). */
+  /** 1 when this account's platform refuses headless browsers. */
   force_headed: number;
   status: 'unknown' | 'ok' | 'logged_out' | 'checkpoint';
   last_seen_at: string | null;

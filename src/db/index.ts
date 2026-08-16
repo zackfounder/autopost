@@ -59,13 +59,13 @@ function migrate(): void {
   if (!has('page_url')) {
     db().exec('ALTER TABLE accounts ADD COLUMN page_url TEXT');
   }
-  // Headless was global. Quora sits behind Cloudflare, which serves a headless
-  // browser a security check instead of the site, so it could never have
-  // posted there however good the selectors were. 1 = force a visible window.
+  // Headless was global. A platform behind a bot check serves a headless
+  // browser a security page instead of the site, so it could never post there
+  // however good the selectors were. 1 = force a visible window for this one.
   // The account's OWN profile, discovered once from the header and stored.
-  // Guessing it at read time picked the first /profile/ link on the page, which
-  // is a stranger from the feed — it reported another Quora user's 15,026
-  // followers as ours.
+  // Guessing it at read time picked the first profile link on the page, which
+  // is a stranger from the feed — it reported another user's 15,026 followers
+  // as ours.
   if (!has('self_url')) {
     db().exec('ALTER TABLE accounts ADD COLUMN self_url TEXT');
   }
@@ -155,6 +155,19 @@ export const getAccountByName = (name: string) =>
   one<Account>('SELECT * FROM accounts WHERE name = ?', name);
 
 export const listAccounts = () => all<Account>('SELECT * FROM accounts ORDER BY id');
+
+/**
+ * Forget an account.
+ *
+ * The row and its scheduled jobs go; the browser profile directory does NOT —
+ * that is the logged-in session, and deleting it is a separate, deliberate act
+ * (`npm run login -- <name> --reset`). Action history stays too, because the
+ * rolling rate limiter reads it and an account can be re-added.
+ */
+export function deleteAccount(id: number): void {
+  db().prepare('DELETE FROM jobs WHERE account_id = ?').run(id);
+  db().prepare('DELETE FROM accounts WHERE id = ?').run(id);
+}
 
 export function setAccountStatus(id: number, status: Account['status'], publicId?: string) {
   run(

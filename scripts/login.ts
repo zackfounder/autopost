@@ -12,8 +12,6 @@ import { stdin, stdout } from 'node:process';
  *
  *   npm run login -- main-linkedin --platform linkedin
  *   npm run login -- main-x        --platform x
- *   npm run login -- main-quora    --platform quora
- *   npm run login -- main-ih       --platform indiehackers
  *
  * One account = one browser profile = one platform. Never share a profile directory
  * between two accounts, and never between two platforms.
@@ -64,10 +62,10 @@ console.log('Nothing is typed for you and no credentials are read.\n');
 // Watch, do not touch — and never decide on your own that he is finished.
 //
 // The first version navigated every five seconds and destroyed LinkedIn's 2FA.
-// The second stopped navigating but still guessed from the URL, and Quora puts
-// its login in a MODAL over the homepage: the URL is quora.com/ the whole time,
-// which read as "logged in", so it closed the browser six seconds in while he
-// was still looking at the form.
+// The second stopped navigating but still guessed from the URL, which is wrong
+// for any platform that opens its login in a modal over the homepage: the
+// address bar reads the same either way, so "logged in" fires while the person
+// is still looking at the form.
 //
 // The person at the keyboard knows when they are logged in. Ask them.
 const deadline = Date.now() + 20 * 60_000;

@@ -11,7 +11,7 @@
  * Safe to re-run. Existing values in `.env` are never overwritten silently: the
  * prompt shows what is already set and Enter keeps it.
  */
-import { existsSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, copyFileSync, chmodSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { createInterface } from 'node:readline/promises';
 import { dirname, join } from 'node:path';
@@ -136,36 +136,76 @@ if (groqKey) {
 }
 
 writeFileSync(envPath, next);
+// The API key and the control-API token both live in this file. On a shared
+// machine the default umask leaves it world-readable.
+chmodSync(envPath, 0o600);
 
 // ── 4. Database ──────────────────────────────────────────────────────────────
 // Imported only now: src/config/env.ts reads .env at import time, so anything
 // loaded before this point would see the file as it was before setup wrote it.
 step(4, 'database');
 const { initSchema, getSetting, setSetting } = await import('../src/db/index.ts');
-const { DEFAULT_LIMITS, DEFAULT_WORKING_HOURS } = await import('../src/engine/limits.ts');
+const { DEFAULT_WORKING_HOURS, repairSeededLimits } = await import('../src/engine/limits.ts');
 const { DEFAULT_PACING } = await import('../src/browser/human.ts');
 const { env } = await import('../src/config/env.ts');
 
 initSchema();
-if (getSetting<unknown>('limits', null) === null) setSetting('limits', DEFAULT_LIMITS);
+// Deliberately NOT seeding `limits`: a settings row outranks the per-platform
+// caps, so writing the generic defaults there would override LinkedIn's own.
+repairSeededLimits();
 if (getSetting<unknown>('workingHours', null) === null) setSetting('workingHours', DEFAULT_WORKING_HOURS);
 if (getSetting<unknown>('pacing', null) === null) setSetting('pacing', DEFAULT_PACING);
 if (getSetting<unknown>('paused', null) === null) setSetting('paused', false);
 say(`   ready at ${env.dbPath}, seeded with warm-up limits`);
 
-// ── 5. What to do next ───────────────────────────────────────────────────────
+// ── 5. Connect LinkedIn ──────────────────────────────────────────────────────
+// Offered here rather than left as an instruction, because this is the step that
+// actually takes a minute and the one people put off.
 const { buildAiClient } = await import('../src/ai/client.ts');
+const { listAccounts } = await import('../src/db/index.ts');
+
+step(5, 'LinkedIn');
+const connected = listAccounts();
+let launched = false;
+
+if (connected.some((a) => a.platform === 'linkedin')) {
+  say(`   already connected: ${connected.filter((a) => a.platform === 'linkedin').map((a) => a.name).join(', ')}`);
+} else {
+  say('   A real browser window opens and waits while YOU log in. Nothing here');
+  say('   types a password, reads a credential, or touches 2FA.');
+  const go = (await ask('   connect LinkedIn now? [Y/n] ', 'n')).toLowerCase();
+  if (go === 'y' || go === 'yes' || go === '') {
+    rl.close();
+    const { spawnSync } = await import('node:child_process');
+    // Inherit the terminal: login.ts asks its own question, and it has to reach
+    // the same person who is sitting here.
+    spawnSync('npx', ['tsx', 'scripts/login.ts', 'main-li', '--platform', 'linkedin'], {
+      cwd: root,
+      stdio: 'inherit',
+    });
+    launched = true;
+  } else {
+    say('   skipped — run it yourself when you are ready:');
+    say('     npm run login -- main-li  --platform linkedin');
+  }
+}
+
+// ── What to do next ──────────────────────────────────────────────────────────
 say('\n──────────────');
 say(`setup done. AI provider: ${buildAiClient().kind}${groqKey ? ` (${model})` : ''}`);
-say('\nConnect the accounts you want. A real browser opens and waits for you to log');
-say('in yourself — nothing here types a password or touches 2FA. Pick any names:\n');
-say('   npm run login -- main-li    --platform linkedin');
-say('   npm run login -- main-x     --platform x');
-say('   npm run login -- main-quora --platform quora');
-say('   npm run login -- main-ih    --platform indiehackers');
+if (!launched) {
+  say('\nConnect an account when you want one. Pick any name:\n');
+  say('   npm run login -- main-li  --platform linkedin');
+  say('   npm run login -- main-x   --platform x');
+}
 say('\nThen:\n');
+say('   npm run doctor       # anything wrong? read-only, opens no browser');
 say('   npm run accounts     # what is connected, and today\'s budget');
 say(`   npm run start        # dashboard at http://localhost:${env.port}`);
+say('\nSchedule the first job — one post a day, published every two hours:\n');
+say('   npm run schedule -- add main-li generate_post --every 1d \\');
+say('     --brief "this week\'s real number or decision" --facts "..."');
+say('   npm run schedule -- add main-li publish_due --every 2h');
 say('\nThe engine never auto-starts. You press the button.\n');
 
-rl.close();
+if (!launched) rl.close();

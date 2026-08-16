@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import { env } from '../config/env.ts';
 import { engine } from '../engine/scheduler.ts';
 import { loadWorkflow, validateWorkflow, WorkflowSchema } from '../engine/workflow.ts';
@@ -57,7 +58,9 @@ const post = (path: string, h: Handler) => routes.set(`POST ${path}`, h);
 get('/api/health', () => ({
   ok: true,
   engine: engine.status(),
-  ai: env.anthropicApiKey ? 'anthropic' : 'mock (no ANTHROPIC_API_KEY)',
+  // Ask the client what it is. Guessing from a key name reported 'mock' while
+  // Groq was really generating.
+  ai: buildAiClient().kind,
 }));
 
 get('/api/actions', () => describeActions());
@@ -316,10 +319,27 @@ class HttpError extends Error {
   }
 }
 
+/**
+ * Bearer check, in constant time.
+ *
+ * `===` on strings returns as soon as two bytes differ, which leaks the token a
+ * character at a time to anyone who can measure the difference. timingSafeEqual
+ * needs equal lengths, so length is compared first and separately — that much is
+ * public anyway.
+ */
 function authorized(req: IncomingMessage): boolean {
+  // No token set is only survivable because the server is bound to loopback;
+  // startServer() refuses to start otherwise.
   if (!env.apiToken) return true;
   const header = req.headers.authorization ?? '';
-  return header === `Bearer ${env.apiToken}`;
+  const expected = `Bearer ${env.apiToken}`;
+  if (header.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(header), Buffer.from(expected));
+}
+
+/** Is this address reachable only from this machine? */
+function isLoopback(host: string): boolean {
+  return host === '127.0.0.1' || host === 'localhost' || host === '::1';
 }
 
 async function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
@@ -340,10 +360,28 @@ function send(res: ServerResponse, status: number, payload: unknown, contentType
 }
 
 export function startServer(): void {
+  // Fail closed. The dashboard route below serves the API token to anyone who
+  // loads it, and the API it unlocks can publish to a real LinkedIn account —
+  // so an unauthenticated server that anything but this machine can reach is
+  // not a warning, it is a refusal.
+  if (!isLoopback(env.bindHost) && !env.apiToken) {
+    console.error(
+      `refusing to start: BIND_HOST is ${env.bindHost}, which other machines can reach, ` +
+      'and API_TOKEN is empty.\nSet API_TOKEN (npm run setup generates one) or bind to 127.0.0.1.',
+    );
+    process.exit(1);
+  }
+
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', `http://localhost:${env.port}`);
 
+    // The dashboard page carries the API token so the browser can call the API.
+    // That is only safe because the socket is loopback-only; if it ever is not,
+    // the page must be earned like every other route.
     if (url.pathname === '/' || url.pathname === '/index.html') {
+      if (!isLoopback(env.bindHost) && !authorized(req)) {
+        return send(res, 401, { error: 'set Authorization: Bearer <API_TOKEN>' });
+      }
       return send(res, 200, dashboardHtml(env.apiToken), 'text/html; charset=utf-8');
     }
 
@@ -365,15 +403,17 @@ export function startServer(): void {
     }
   });
 
-  server.listen(env.port, () => {
+  server.listen(env.port, env.bindHost, () => {
     console.log(`autopost dashboard  http://localhost:${env.port}`);
+    console.log(`bound to                  ${env.bindHost}${isLoopback(env.bindHost) ? ' (this machine only)' : '  ← REACHABLE FROM THE NETWORK'}`);
     // Ask the client what it actually is. This line used to guess from
     // ANTHROPIC_API_KEY alone, so adding Groq made it report 'mock' while
     // generation was really running on Groq — the one line whose whole job is
     // to tell you which provider you are on, quietly lying about it.
     console.log(`AI provider               ${buildAiClient().kind}`);
     if (!env.apiToken) {
-      console.log('WARNING: API_TOKEN is empty — the control API is unauthenticated.');
+      console.log('WARNING: API_TOKEN is empty. Nothing but this machine can reach the');
+      console.log('         server, but anything running on it can. `npm run setup` fixes this.');
     }
   });
 }

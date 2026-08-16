@@ -99,9 +99,10 @@ export interface QuotaCheck {
 }
 
 /**
- * Per-platform caps. The platform adapter supplies the base (X tolerates more posts
- * than Indie Hackers does), and anything you set in settings overrides it. Settings
- * always win, so the dashboard and the `set_limits` tool remain the single control.
+ * Per-platform caps. The platform adapter supplies the base (X tolerates several
+ * posts a day where LinkedIn punishes more than one), and anything you set in
+ * settings overrides it. Settings always win, so the dashboard and the
+ * `set_limits` tool remain the single control.
  */
 export function loadLimitsFor(platform?: string): Limits {
   const base: Limits = { ...DEFAULT_LIMITS };
@@ -119,6 +120,26 @@ export function loadLimitsFor(platform?: string): Limits {
 
 export const savePlatformLimits = (platform: string, l: Limits) =>
   setSetting(`limits.${platform}`, l);
+
+/**
+ * Undo a seeded global limits row.
+ *
+ * `db:init` used to write DEFAULT_LIMITS into settings as a starting point. But
+ * settings win over platform caps by design, so that row silently overrode every
+ * adapter's numbers: LinkedIn asks for 40 profile visits a day and a seeded
+ * install granted the generic 60, and none of the new LinkedIn-only caps applied
+ * at all. A row nobody chose should not outrank a platform that did choose.
+ *
+ * Only removed when it is byte-identical to the defaults — anything edited is a
+ * real decision and is left alone.
+ */
+export function repairSeededLimits(): boolean {
+  const stored = getSetting<Limits | null>('limits', null);
+  if (!stored) return false;
+  if (JSON.stringify(stored) !== JSON.stringify(DEFAULT_LIMITS)) return false;
+  setSetting('limits', {});
+  return true;
+}
 
 /** Rolling-window quota check for one action on one account. */
 export function checkQuota(accountId: number, action: string, platform?: string): QuotaCheck {

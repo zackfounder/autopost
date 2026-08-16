@@ -32,8 +32,7 @@ version; no restart, no redeploy.
 | `GLOBAL.md` | Who you are, the voice rules, the seven absolute Nevers, the engagement bar |
 | `linkedin.md` | Six-line shape, the approved reference post, no-sell-after, one hashtag |
 | `x.md` | 280 default, thread rules, likes only, DM gating |
-| `quora.md` | A "post" is an ANSWER, answer in the first sentence, no generic advice |
-| `indiehackers.md` | `Title\n\nBody`, every post needs a real number or a real failure |
+
 
 `GLOBAL.md` loads first, the platform file loads on top and wins on conflicts.
 
@@ -107,7 +106,7 @@ overridden. If it never passes, the result is `ok: false` and nothing publishes.
 | Decide what to upvote, like, comment on, or skip | Exceed a rate cap, or raise its own caps |
 | Schedule its own jobs and change their cadence | Act outside working hours |
 | Draft, queue, and publish without asking you | Bypass the pre-publish re-check |
-| Send DMs on LinkedIn and X | DM on Quora or Indie Hackers (no such surface) |
+| Send DMs on LinkedIn and X | DM someone who is not a 1st-degree connection |
 | Read its own audit trail | Delete or edit the audit trail |
 | Decide to publish nothing | Log in, or touch a credential |
 
@@ -131,14 +130,20 @@ path.
 
 Adapter defaults, overridable in settings (settings always win):
 
-| | post/day | dm/day | like or upvote/day | comment/day |
+| | post/day | dm/day | like/day | comment/day |
 |---|---|---|---|---|
 | LinkedIn | 1 | 20 | 30 | 8 |
 | X | 4 | 12 | 40 | — |
-| Quora | 2 | — | 25 | 6 |
-| Indie Hackers | 1 | — | 15 | 4 |
 
-Indie Hackers is the tightest deliberately: it is small enough that volume reads as
+LinkedIn's targeted actions, which act on a URL you named:
+
+| react | comment | repost | follow | profile visit | accept invite | withdraw invite | reply |
+|---|---|---|---|---|---|---|---|
+| 20/day | 8/day | 3/day | 15/day | 40/day | 25/day | 20/day | 20/day |
+
+
+LinkedIn's targeted actions are tighter than its feed equivalents deliberately:
+picking one person's post to react to, over and over, reads as
 spam, and the reputational damage there does not decay.
 
 Windows are **rolling** 24h and 1h, not calendar days.

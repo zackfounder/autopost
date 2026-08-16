@@ -9,8 +9,8 @@ Helper teardown the design came from.
 
 ## 1. What this is in one paragraph
 
-A single Node process that drives four real browsers — one per social account
-(LinkedIn, X, Quora, Indie Hackers) — to post, DM, and engage with feeds on the
+A single Node process that drives one real browser per social account
+(LinkedIn, X) — to post, comment, react, DM, and engage with feeds on the
 owner's behalf, plus run a LinkedIn outreach funnel. It is architecturally a clone of
 Linked Helper: the session lives locally in a persistent Chromium profile, work is a
 queue of small steps, and safety comes from pacing and rolling rate caps rather than
@@ -102,7 +102,7 @@ applyResult(...)
 
 ### `runJob()` — `src/engine/jobs.ts`
 
-Four kinds:
+Nine kinds. The first four are the original engine:
 
 - **`generate_post`** — picks a template by rotation, generates, gates, writes a
   `content` row as `queued` (passed) or `blocked` (failed). **No browser touched.**
@@ -114,6 +114,24 @@ Four kinds:
   other outbound text.
 - **`send_dm`** — takes `body` (gated) or `brief` (generated + gated), then
   `adapter.dm()`.
+
+The rest are LinkedIn's targeted actions — they act on a URL you named rather than on
+whatever the feed served up. Each sub-action is quota-checked separately, so hitting
+the comment cap still lets the reaction through:
+
+- **`engage_post`** `{url, reaction?, comment?|brief?, repost?}` — react, comment
+  and/or share one specific post. A repost "with your thoughts" publishes text under
+  your own name, so it is gated as a `post`, not as a comment.
+- **`reply_comments`** `{postUrl?, max}` — answers comments on your own posts,
+  defaulting to your most recent ones. Skips your own comments by handle, and records
+  every comment as handled *even when the gate blocks the reply*, or a blocked reply
+  is retried forever until the cap absorbs the whole job.
+- **`grow_network`** `{maxAccept, criteria?, withdrawAfterDays?}` — accepts the
+  invitations worth accepting (a structured model call ranks them on the headline,
+  which is all the card shows) and withdraws stale ones you sent.
+- **`visit_profiles`** `{urls, max}` — the read is incidental; the visit is the
+  action, because the other person is notified.
+- **`follow_targets`** `{urls, max}`.
 
 **Asymmetry worth knowing:** `engage_feed` loops internally up to `maxActions`, with a
 full human gap between each. One job run can therefore hold the browser for several
@@ -225,7 +243,7 @@ threads, line caps), `defaultLimits`, `sel` (every selector), and the methods
 
 Selector conventions, and they matter:
 
-- **Never** match on generated class names. All four platforms obfuscate and rotate them.
+- **Never** match on generated class names. Both platforms obfuscate and rotate them.
 - X uses `data-testid` consistently — prefer it there.
 - Elsewhere use `aria-label`, roles, and visible text.
 - **Every target is a list of candidates**, tried in order by `firstVisible()`, because
@@ -264,26 +282,36 @@ permalink instead of the index would be the fix.
   `advanceStepOrFinish` reads. That is the only path that advances by more than one.
 - **`filter_connected` anchors its give-up clock in `vars`**, not on a table column,
   because nothing records when a lead first *reached a given step*.
-- **Quora's `post()` refuses unless the page looks like a question page.** A Quora
-  "post" is an *answer*; `target_ref` must be the question URL. The URL check is a
-  crude regex heuristic and is a fair thing to improve.
-- **Indie Hackers `post()` expects `Title\n\nBody`** — first line becomes the title.
+- **LinkedIn's `post()` refuses a page post with no page composer URL.** Passing
+  `postAs` without `composerUrl` fails closed rather than falling back to the feed
+  composer, which posts as the *person*. That fallback once published a company post
+  on the founder's own profile.
+- **LinkedIn's targeted actions match on text, never on index.** Accepting an
+  invitation removes its card and shifts every index below it; replying to the wrong
+  comment in public is not recoverable. `acceptInvitation` matches the name and
+  `replyToComment` matches the comment's own words.
+- **`ageInDays()` returns 0 for anything it cannot parse.** Withdrawal reads the
+  card's own "Sent 2 months ago" wording, and an unparsed card must read as brand new
+  — withdrawing a fresh invite wastes the weekly quota the job exists to protect.
 - **X `splitThread()`** turns a body whose lines start `1/`, `2/` into separate
   tweets. The gate then caps each tweet at 280 individually.
 
 ## 10. Verified vs. unverified
 
-`npm run smoke` — 45 checks, no credentials, no network, no browser. Covers URL
+`npm run smoke` — 74 checks, no credentials, no network, no browser. Covers URL
 normalization, the three workflow-validation traps, the funnel queue end-to-end, the
 rolling limiter (including failures not consuming quota), 13 gate checks, template
 rotation fairness, X thread splitting, instruction loading, generation failing
-closed, and job recurrence. Typecheck is clean; 23 MCP tools enumerate.
+closed, job recurrence, every scheduleable job kind being handled by `runJob()`,
+invitation-age parsing, and platform caps outranking the seeded defaults. Typecheck is
+clean; 23 MCP tools enumerate.
 
 **Every platform selector is unverified.** No file in `src/platforms/` has run against
-a live logged-in session on any of the four. Each platform needs one supervised
+a live logged-in session. Each platform needs one supervised
 calibration run: log in, schedule one job, watch the browser headed, and fix whatever
-the engine log says it could not find. Quora will need the most work — it has no
-stable test-id convention.
+the engine log says it could not find. The newest LinkedIn actions have had the least
+exposure of all: the reactions flyout (hover-then-click), the invitation manager, and
+comment replies.
 
 Treat any selector-related bug report as expected, not surprising.
 
