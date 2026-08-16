@@ -1,10 +1,14 @@
-# pilot
+# autopost
 
-A local social engine for **four accounts** — LinkedIn, X, Quora, Indie Hackers —
-built on Linked Helper's architecture: one real browser per account holding a real
-session, rolling rate limits, human pacing. Agents post, DM, and engage with feeds
-autonomously, bounded by an approved template bank and a content gate enforced in
-code.
+**Self-hosted LinkedIn and X automation.** An AI agent that writes and publishes to
+your **LinkedIn profile and company page**, **X** (posts, threads, DMs), **Quora**
+and **Indie Hackers** — from your own logged-in browser, on your own machine.
+
+No platform API keys, no approved developer app, no monthly SaaS. One free LLM key
+(Groq) and a browser you log into yourself. Built on Linked Helper's architecture:
+one real browser per account holding a real session, rolling rate limits, human
+pacing. Agents post, DM and engage with feeds autonomously, bounded by an approved
+template bank and a content gate enforced in code.
 
 Two docs before you touch anything:
 
@@ -33,13 +37,30 @@ replies), which shares the same browser and the same limits.
 
 ## Setup
 
+Two commands. You need **Node 22.5+** and one **free** Groq key from
+[console.groq.com/keys](https://console.groq.com/keys) — no card, about a minute.
+
 ```bash
-cd ~/linkedin-pilot
 npm install
-cp .env.example .env          # set API_TOKEN; ANTHROPIC_API_KEY optional
-npm run smoke                 # 45 checks, no credentials, no network, no browser
-npm run db:init
+npm run setup
 ```
+
+`setup` writes `.env`, generates the control-API token, takes your Groq key and
+proves it works, creates the database, and prints exactly what to run next. It is
+safe to re-run — anything already set is kept.
+
+<details>
+<summary>Why a free key is the default, and how to use a paid one</summary>
+
+These are two-hundred-word posts written against a template that already dictates
+their shape, so a frontier model buys nothing. Groq's free tier runs the whole
+engine. Anthropic is available but strictly opt-in: it is used **only** when
+`ANTHROPIC_API_KEY` *and* `AI_PAID=true` are both set — a key sitting in `.env` is
+not consent to spend it. With no key at all you get a deterministic mock: every
+step works, but generated posts are always blocked by the gate, on purpose, so stub
+text can never reach a real account.
+
+</details>
 
 Then connect each account. **You log in yourself** — a real browser window opens and
 waits. Nothing types a password, reads a credential, or touches 2FA.
@@ -55,11 +76,18 @@ One account = one browser profile = one platform. The session lives in
 `data/profiles/<name>/` on this machine. Treat that directory as a credential.
 
 ```bash
+npm run doctor                # is anything wrong? read-only, opens no browser
 npm run accounts              # what's connected, what it can do, today's budget
 npm run start                 # dashboard at http://localhost:4310
 ```
 
 The engine does not auto-start. You press the button.
+
+### Posting as a LinkedIn company page
+
+A page post needs the page's own composer URL, passed when the job is created. There
+is deliberately **no fallback** to the personal profile: if the page composer cannot
+be opened, the post fails rather than landing on your own feed under your own name.
 
 ## Scheduling the agents
 
@@ -88,7 +116,9 @@ obeys working hours and rate caps.
 
 | Command | Does |
 |---|---|
-| `npm run smoke` | 45 checks: URL handling, workflow traps, queue machine, rate limiter, **the gate**, template rotation, thread splitting, job queue. No credentials, no network. |
+| `npm run setup` | Write `.env`, generate the API token, verify the AI key, create the database. Re-runnable. |
+| `npm run doctor` | Read-only health check: node, keys, model, database, connected accounts |
+| `npm run smoke` | 59 checks: URL handling, workflow traps, queue machine, rate limiter, **the gate**, template rotation, thread splitting, job queue. No credentials, no network. |
 | `npm run db:init` | Create the database, seed warm-up limits |
 | `npm run login -- <name> --platform <p>` | Connect one account (interactive). `--proxy socks5://…` to pin an IP. |
 | `npm run accounts` | Read-only status of every account |
@@ -101,7 +131,7 @@ obeys working hours and rate caps.
 ## Connecting your agents
 
 ```bash
-claude mcp add pilot -- npx tsx ~/linkedin-pilot/src/mcp/server.ts
+claude mcp add autopost -- npx tsx /path/to/autopost/src/mcp/server.ts
 ```
 
 **Content and engagement:** `list_platforms`, `list_templates`, `read_instructions`,
@@ -145,7 +175,7 @@ src/
   browser/            persistent Chromium session, human pacing, LinkedIn Voyager reads
   actions/            outreach funnel actions
   sources/            lead collection
-  ai/                 AiClient interface + Claude and mock
+  ai/                 AiClient interface + Groq (free), Claude (opt-in), and mock
   server/             HTTP API + dashboard
   mcp/                MCP server
   db/                 schema.sql + typed repositories
@@ -154,7 +184,7 @@ docs/                 AGENT-CONTROL.md, ARCHITECTURE.md
 
 ## What is verified and what is not
 
-**Verified** (`npm run smoke`, no credentials): URL normalization; the three
+**Verified** (`npm run smoke` — 59 checks, no credentials): URL normalization; the three
 workflow-validation traps; the funnel queue end-to-end; the rolling rate limiter
 including that failed attempts don't consume quota; **13 separate content-gate
 checks** including template binding, banned words, placeholders, outreach mechanics

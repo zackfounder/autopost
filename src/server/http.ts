@@ -366,7 +366,7 @@ export function startServer(): void {
   });
 
   server.listen(env.port, () => {
-    console.log(`linkedin-pilot dashboard  http://localhost:${env.port}`);
+    console.log(`autopost dashboard  http://localhost:${env.port}`);
     // Ask the client what it actually is. This line used to guess from
     // ANTHROPIC_API_KEY alone, so adding Groq made it report 'mock' while
     // generation was really running on Groq — the one line whose whole job is

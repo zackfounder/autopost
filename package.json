@@ -1,13 +1,15 @@
 {
-  "name": "linkedin-pilot",
+  "name": "autopost",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "A local LinkedIn automation engine with the same architecture as Linked Helper: one real browser, a step-based campaign funnel, rolling rate limits, and an AI-drivable control API.",
+  "description": "Self-hosted LinkedIn and X automation: an AI agent that writes and posts to LinkedIn (profile and company page), X, Quora and Indie Hackers from your own logged-in browser. One real browser per account, a step-based campaign funnel, rolling rate limits, and an AI-drivable control API.",
   "engines": {
     "node": ">=22.5.0"
   },
   "scripts": {
+    "setup": "tsx scripts/setup.ts",
+    "doctor": "tsx scripts/doctor.ts",
     "typecheck": "tsc --noEmit",
     "db:init": "tsx scripts/init-db.ts",
     "login": "tsx scripts/login.ts",

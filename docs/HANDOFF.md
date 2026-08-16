@@ -171,8 +171,9 @@ against recent published bodies on that account).
 ### ⚠️ In mock mode, all content generation blocks
 
 `MockClient.text()` returns a string containing an em-dash, which the gate bans. So
-**without `ANTHROPIC_API_KEY` set, every `draft_content` / `generate_post` returns
-`blocked`.** That is correct behaviour, not a bug — smoke check #11 asserts exactly
+**with no AI key set at all — no `GROQ_API_KEY`, and no `ANTHROPIC_API_KEY` paired
+with `AI_PAID=true` — every `draft_content` / `generate_post` returns `blocked`.**
+That is correct behaviour, not a bug — smoke check #11 asserts exactly
 this ("generation fails CLOSED"). Do not "fix" the mock to pass the gate; the funnel
 and every non-content path still work fine in mock mode.
 
