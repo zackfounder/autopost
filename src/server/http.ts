@@ -404,7 +404,7 @@ export function startServer(): void {
   });
 
   server.listen(env.port, env.bindHost, () => {
-    console.log(`linkedin-browser-agent dashboard  http://localhost:${env.port}`);
+    console.log(`social-media-automation-agent dashboard  http://localhost:${env.port}`);
     console.log(`bound to                  ${env.bindHost}${isLoopback(env.bindHost) ? ' (this machine only)' : '  ← REACHABLE FROM THE NETWORK'}`);
     // Ask the client what it actually is. This line used to guess from
     // ANTHROPIC_API_KEY alone, so adding Groq made it report 'mock' while

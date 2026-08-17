@@ -10,7 +10,7 @@ export const page = (): string => `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>linkedin-browser-agent setup</title>
+<title>social-media-automation-agent setup</title>
 <style>
   :root {
     --bg: #0b0d10; --card: #14181d; --line: #232a32; --text: #e8edf2;
@@ -74,7 +74,7 @@ export const page = (): string => `<!doctype html>
 </head>
 <body>
 <div class="wrap">
-  <h1>linkedin-browser-agent</h1>
+  <h1>social-media-automation-agent</h1>
   <p class="sub">Three steps. Nothing leaves this machine.</p>
 
   <!-- 1 ─────────────────────────────────────────────────────────────────── -->

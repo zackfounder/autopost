@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "linkedin-browser-agent",
+      "name": "social-media-automation-agent",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "start"],
       "port": 4310

@@ -1,4 +1,4 @@
-# linkedin-browser-agent
+# social-media-automation-agent
 
 A local social engine for **LinkedIn, X and Bluesky**. One real browser per account holding a
 real session, rolling rate caps, human pacing. Agents post, comment, react, repost,
