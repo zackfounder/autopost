@@ -45,7 +45,7 @@ if (major < 22 || (major === 22 && minor < 5)) {
   process.exit(1);
 }
 
-say('\nautopost setup\n──────────────');
+say('\nlinkedin-browser-agent setup\n──────────────');
 
 // ── 1. .env ──────────────────────────────────────────────────────────────────
 step(1, 'configuration');

@@ -1,9 +1,9 @@
 {
-  "name": "autopost",
+  "name": "linkedin-browser-agent",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Self-hosted LinkedIn and X automation: an AI agent that writes and posts to LinkedIn (profile and company page), X, Quora and Indie Hackers from your own logged-in browser. One real browser per account, a step-based campaign funnel, rolling rate limits, and an AI-drivable control API.",
+  "description": "An AI agent that runs your LinkedIn through a real browser you are already logged into: posts, comments, reactions, reposts, replies to your own comment threads, invitations and DMs. No platform API keys, self-hosted, free LLM tier.",
   "engines": {
     "node": ">=22.5.0"
   },

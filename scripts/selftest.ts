@@ -65,7 +65,7 @@ const read = <T>(page: Page, key: string) =>
   page.evaluate((k) => (window as unknown as Record<string, T>)[k], key).catch(() => undefined);
 
 const browser = await chromium.launch({ headless: true });
-console.log('\nautopost selftest — real browser, fake LinkedIn\n──────────────────────────────────────────────');
+console.log('\nlinkedin-browser-agent selftest — real browser, fake LinkedIn\n──────────────────────────────────────────────');
 
 /* ─────────────────────────────────────────────────────────────── posting */
 

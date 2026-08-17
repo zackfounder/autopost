@@ -1,4 +1,4 @@
-# autopost
+# linkedin-browser-agent
 
 **Self-hosted LinkedIn and X automation.** An AI agent that runs your **LinkedIn**
 — profile and company page, posts, comments, reactions, reposts, DMs, invitations,
@@ -61,8 +61,8 @@ You need **Node 22.5+** and one **free** Groq key. That is the whole shopping li
 | 4 | Log into LinkedIn in the window it opens | ~1 min |
 
 ```bash
-git clone https://github.com/zackfounder/autopost.git
-cd autopost
+git clone https://github.com/zackfounder/linkedin-browser-agent.git
+cd linkedin-browser-agent
 npm install
 npm run setup
 ```
@@ -195,7 +195,7 @@ obeys working hours and rate caps.
 ## Connecting your agents
 
 ```bash
-claude mcp add autopost -- npx tsx /path/to/autopost/src/mcp/server.ts
+claude mcp add linkedin -- npx tsx /path/to/linkedin-browser-agent/src/mcp/server.ts
 ```
 
 **Content and engagement:** `list_platforms`, `list_templates`, `read_instructions`,

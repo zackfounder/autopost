@@ -121,7 +121,7 @@ name; and `last_received_message_text` is *not* a reply signal — the real sign
 
 ## 7. What this repo does differently
 
-| | Linked Helper | autopost |
+| | Linked Helper | linkedin-browser-agent |
 |---|---|---|
 | Browser | embedded Chromium, closed | Playwright Chromium, persistent profile dir you own |
 | Workflow | GUI builder | JSON file (an LLM can author it) |

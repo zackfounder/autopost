@@ -1,4 +1,4 @@
-# autopost
+# linkedin-browser-agent
 
 A local social engine for **LinkedIn and X**. One real browser per account holding a
 real session, rolling rate caps, human pacing. Agents post, comment, react, repost,

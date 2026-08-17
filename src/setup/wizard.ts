@@ -229,7 +229,7 @@ export function startWizard(port: number): void {
   // no business being reachable from the network for the two minutes it exists.
   server.listen(port, '127.0.0.1', () => {
     const at = `http://127.0.0.1:${port}`;
-    console.log(`\nautopost setup — open ${at}\n`);
+    console.log(`\nlinkedin-browser-agent setup — open ${at}\n`);
     const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
     spawn(opener, [at], { stdio: 'ignore', detached: true, shell: process.platform === 'win32' }).unref();
     console.log('If no window opened, paste that address into your browser.');

@@ -20,7 +20,7 @@ const bad = (label: string, fix: string) => {
   console.log(`  FAIL  ${label}\n        ${fix}`);
 };
 
-console.log('\nautopost doctor\n───────────────');
+console.log('\nlinkedin-browser-agent doctor\n───────────────');
 
 // node:sqlite is the database; it does not exist before 22.5.
 const [major = 0, minor = 0] = process.versions.node.split('.').map(Number);

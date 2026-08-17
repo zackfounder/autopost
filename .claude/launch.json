@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "autopost",
+      "name": "linkedin-browser-agent",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "start"],
       "port": 4310

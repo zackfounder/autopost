@@ -52,7 +52,7 @@ import {
 
 initSchema();
 
-const server = new McpServer({ name: 'autopost', version: '0.1.0' });
+const server = new McpServer({ name: 'linkedin-browser-agent', version: '0.1.0' });
 
 const text = (v: unknown) => ({
   content: [{ type: 'text' as const, text: typeof v === 'string' ? v : JSON.stringify(v, null, 2) }],
