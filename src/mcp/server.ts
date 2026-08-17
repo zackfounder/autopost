@@ -271,7 +271,7 @@ server.tool(
     'shapes per platform, and a post whose template id is not in this list is rejected ' +
     'by code before it can reach an account. You choose which shape fits and write the ' +
     'words inside it; you cannot invent a sixth shape.',
-  { platform: z.enum(['linkedin', 'x']).optional() },
+  { platform: z.enum(['linkedin', 'x', 'bluesky']).optional() },
   async ({ platform }) => {
     const all = [...loadTemplates(true).values()];
     return text(platform ? all.filter((t) => t.platform === platform) : all);
@@ -283,7 +283,7 @@ server.tool(
   'The operating brief you are working under for a platform: voice, hard rules, what ' +
     'is never allowed, and the engagement bar. instructions/GLOBAL.md plus the platform ' +
     'file. Read this before writing anything for that account.',
-  { platform: z.enum(['linkedin', 'x']) },
+  { platform: z.enum(['linkedin', 'x', 'bluesky']) },
   async ({ platform }) => text(loadInstructions(platform)),
 );
 
@@ -293,7 +293,7 @@ server.tool(
     'violation. Use this to iterate on wording before committing. The same checks run ' +
     'again at publish time, so passing here is necessary but the check is never skipped later.',
   {
-    platform: z.enum(['linkedin', 'x']),
+    platform: z.enum(['linkedin', 'x', 'bluesky']),
     kind: z.enum(['post', 'dm', 'comment', 'reply']).default('post'),
     body: z.string(),
     templateId: z.string().optional(),
@@ -310,7 +310,7 @@ server.tool(
     'there must not appear in the copy.',
   {
     account: z.string(),
-    platform: z.enum(['linkedin', 'x']),
+    platform: z.enum(['linkedin', 'x', 'bluesky']),
     kind: z.enum(['post', 'dm', 'comment', 'reply']).default('post'),
     brief: z.string().describe('what this piece needs to accomplish, in your own words'),
     facts: z.string().optional().describe('the ONLY verified facts the copy may use'),

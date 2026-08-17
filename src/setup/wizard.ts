@@ -24,6 +24,7 @@ import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { page } from './page.ts';
+import { DEFAULT_GROQ_MODEL } from '../ai/models.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const envPath = join(root, '.env');
@@ -106,22 +107,14 @@ const routes: Record<string, (body: Record<string, unknown>) => Promise<unknown>
     const key = String(body.key ?? '').trim();
     if (!key) return { ok: false, error: 'paste a key first' };
 
-    const res = await fetch('https://api.groq.com/openai/v1/models', {
-      headers: { Authorization: `Bearer ${key}` },
-    }).catch((e: Error) => e);
+    const { fetchModelIds, pickChatModel } = await import('../ai/models.ts');
+    const res = await fetchModelIds(key);
+    if (!res.ok) {
+      return { ok: false, error: res.status === 401 ? 'Groq rejected that key (401). Copy it again?' : res.error };
+    }
 
-    if (res instanceof Error) return { ok: false, error: `could not reach Groq: ${res.message}` };
-    if (res.status === 401) return { ok: false, error: 'Groq rejected that key (401). Copy it again?' };
-    if (!res.ok) return { ok: false, error: `Groq answered ${res.status}` };
-
-    const ids = ((await res.json() as { data?: { id: string }[] }).data ?? []).map((m) => m.id);
-    const wanted = readEnv().GROQ_MODEL || 'llama-3.3-70b-versatile';
-    const model = ids.includes(wanted)
-      ? wanted
-      : ids.find((id) => /llama.*70b/.test(id))
-        ?? ids.find((id) => /llama/.test(id) && !/guard/.test(id))
-        ?? ids.find((id) => !/whisper|guard|tts/.test(id))
-        ?? wanted;
+    const wanted = readEnv().GROQ_MODEL || DEFAULT_GROQ_MODEL;
+    const { model } = pickChatModel(res.ids, wanted);
 
     const updates: Record<string, string> = { GROQ_API_KEY: key, GROQ_MODEL: model };
     if (!readEnv().API_TOKEN) updates.API_TOKEN = randomBytes(24).toString('hex');

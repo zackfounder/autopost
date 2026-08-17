@@ -64,6 +64,17 @@ export function createContent(row: {
 export const getContent = (id: number) =>
   one<ContentRow>('SELECT * FROM content WHERE id = ?', id);
 
+/**
+ * Replace a body after a human edited it.
+ *
+ * Deliberately separate from setContentState: changing the words and changing
+ * the state are different decisions, and the caller must re-gate between them.
+ * There is no path that writes a body and a `queued` state in one call.
+ */
+export function updateContentBody(id: number, body: string): void {
+  run('UPDATE content SET body = ? WHERE id = ?', body, id);
+}
+
 export function setContentState(
   id: number,
   state: ContentRow['state'],

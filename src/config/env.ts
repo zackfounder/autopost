@@ -1,5 +1,6 @@
 import { config } from 'dotenv';
 import { resolve } from 'node:path';
+import { DEFAULT_GROQ_MODEL } from '../ai/models.ts';
 
 config();
 
@@ -31,7 +32,7 @@ export const env = {
   aiModel: str('AI_MODEL', 'claude-opus-5'),
   // Free lane, and the default: these posts are short and template-bound.
   groqApiKey: str('GROQ_API_KEY', ''),
-  groqModel: str('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+  groqModel: str('GROQ_MODEL', DEFAULT_GROQ_MODEL),
   headless: bool('HEADLESS', false),
   paused: bool('PAUSED', false),
 };

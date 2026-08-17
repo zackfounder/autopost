@@ -59,19 +59,21 @@ if (ai.kind === 'mock') {
 } else if (ai.kind === 'anthropic') {
   ok('AI provider: anthropic (paid)', env.aiModel);
 } else {
-  const res = await fetch('https://api.groq.com/openai/v1/models', {
-    headers: { Authorization: `Bearer ${env.groqApiKey}` },
-  }).catch((e: Error) => e);
+  const { fetchModelIds, pickChatModel, writableModels } = await import('../src/ai/models.ts');
+  const res = await fetchModelIds(env.groqApiKey);
 
-  if (res instanceof Error) warn('AI provider: groq', `could not reach Groq: ${res.message}`);
-  else if (res.status === 401) bad('GROQ_API_KEY rejected (401)', 'get a fresh key at https://console.groq.com/keys');
-  else if (!res.ok) warn('AI provider: groq', `Groq answered ${res.status}`);
-  else {
-    const ids = ((await res.json() as { data?: { id: string }[] }).data ?? []).map((m) => m.id);
-    if (ids.includes(env.groqModel)) ok('AI provider: groq (free)', env.groqModel);
+  if (!res.ok && res.status === 401) {
+    bad('GROQ_API_KEY rejected (401)', 'get a fresh key at https://console.groq.com/keys');
+  } else if (!res.ok) {
+    warn('AI provider: groq', res.error);
+  } else if (res.ids.includes(env.groqModel)) {
+    ok('AI provider: groq (free)', env.groqModel);
+  } else {
     // A retired model id is the failure that shows up hours later, inside a
-    // scheduled job, and looks like a broken key.
-    else bad(`GROQ_MODEL ${env.groqModel} no longer exists`, `pick one of: ${ids.filter((i) => !/whisper|guard|tts/.test(i)).slice(0, 4).join(', ')}`);
+    // scheduled job, and reads as a broken key. Groq retires them regularly.
+    const { model } = pickChatModel(res.ids, env.groqModel);
+    bad(`GROQ_MODEL ${env.groqModel} no longer exists on this key`,
+      `set GROQ_MODEL=${model} in .env (or re-run \`npm run setup\`).\n        Also available: ${writableModels(res.ids).filter((i) => i !== model).slice(0, 4).join(', ') || 'nothing else usable'}`);
   }
 }
 

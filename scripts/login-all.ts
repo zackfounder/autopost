@@ -37,7 +37,7 @@ const only = (flag('only') ?? '').split(',').map((s) => s.trim()).filter(Boolean
 const WANTED: { platform: string; name: string; label: string }[] = [
   { platform: 'linkedin',     name: 'main',          label: 'LinkedIn — your personal account' },
   { platform: 'x',            name: 'main-x',        label: 'X — your personal account' },
-  { platform: 'x',            name: 'crew-x',        label: 'X — the Crew company account' },
+  { platform: 'bluesky',      name: 'main-bsky',     label: 'Bluesky' },
 ];
 
 initSchema();

@@ -18,7 +18,9 @@
  */
 import { chromium, type Browser, type Page } from 'playwright';
 import { linkedin } from '../src/platforms/linkedin.ts';
+import { bluesky } from '../src/platforms/bluesky.ts';
 import * as fx from './fixtures/linkedin.ts';
+import * as bfx from './fixtures/bluesky.ts';
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail?: unknown) => {
@@ -275,6 +277,128 @@ console.log('\n7. Your own posts');
   const out = await linkedin.deletePost!(page, 'Churn is a distribution problem');
   check('deleting reports ok only after the post is gone', out.ok, out);
   check('the confirm dialog was the thing that fired', state.deleted === true);
+  await page.close();
+}
+
+/* ══════════════════════════════════════════════════════════════ bluesky ══ */
+
+// A second site on the same harness. The route table keys off the host, so both
+// adapters run against their own fixtures in the same browser.
+const bstate = { page: 'home' as string, liked: false, following: false, deleted: false };
+
+function bhtml(url: string): string {
+  if (bstate.page === 'signedOut') return bfx.signedOut();
+  if (url.includes('/post/')) return bfx.post({ liked: bstate.liked });
+  if (url.includes('/profile/')) return bfx.profile({ following: bstate.following });
+  return bfx.home({ deleted: bstate.deleted });
+}
+
+async function openBsky(): Promise<Page> {
+  const page = await browser.newPage();
+  await page.route('**/*', async (route) => {
+    const url = route.request().url();
+    if (url.includes('/selftest/bsky-deleted')) {
+      bstate.deleted = true;
+      return route.fulfill({ status: 200, body: 'ok' });
+    }
+    return route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: bhtml(url) });
+  });
+  return page;
+}
+
+console.log('\n8. Bluesky');
+{
+  const page = await openBsky();
+  const out = await bluesky.post!(page, 'the timeout was the whole bug');
+  check('a bluesky post reports ok', out.ok, out);
+  check('the body reached the editor',
+    ((await read<string>(page, '__posted')) ?? '').includes('the timeout was the whole bug'));
+  await page.close();
+}
+
+{
+  // Threads are the path most likely to break: each added post creates ANOTHER
+  // editor with the same testid, and typing into the first one silently
+  // concatenates the whole thread into part 1.
+  const page = await openBsky();
+  const out = await bluesky.post!(page, '1/ what I changed\n2/ what happened\n3/ what I would do again');
+  const parts = (await read<string[]>(page, '__thread')) ?? [];
+  check('a numbered body posts as a thread', out.ok, out);
+  check('it split into three separate editors', parts.length === 3, parts);
+  check('part 2 went into the second editor, not appended to the first',
+    (parts[1] ?? '').startsWith('2/'), parts);
+  await page.close();
+}
+
+{
+  const page = await openBsky();
+  const items = await bluesky.readFeed!(page, 10);
+  check('the feed reads both posts', items.length === 2, items.map((i) => i.author));
+  check('the author handle comes off the testid', items[0]?.author === 'dana.bsky.social', items[0]);
+  check('the permalink is absolute',
+    (items[0]?.permalink ?? '').startsWith('https://bsky.app/profile/'), items[0]?.permalink);
+
+  const liked = await bluesky.engage!(page, items[0]!, 'like');
+  check('liking a feed item reports ok', liked.ok, liked);
+  check('it liked the post it was given',
+    (await read<string>(page, '__liked')) === 'feedItem-by-dana.bsky.social');
+  await page.close();
+}
+
+{
+  const page = await openBsky();
+  const out = await bluesky.reactToPost!(page, 'https://bsky.app/profile/dana/post/abc', 'like');
+  check('liking by URL reports ok', out.ok, out);
+  check('the like registered', (await read<boolean>(page, '__liked')) === true);
+  await page.close();
+}
+
+{
+  // LinkedIn has six reactions and Bluesky has one. Quietly downgrading
+  // "celebrate" to a like would be a lie about what the account did.
+  const page = await openBsky();
+  const out = await bluesky.reactToPost!(page, 'https://bsky.app/profile/dana/post/abc', 'celebrate');
+  check('a LinkedIn-only reaction is refused, not downgraded to a like',
+    !out.ok && (out.error ?? '').includes('only one reaction'), out);
+  check('nothing was liked', (await read<boolean>(page, '__liked')) === undefined);
+  await page.close();
+}
+
+{
+  bstate.liked = true;
+  const page = await openBsky();
+  const out = await bluesky.reactToPost!(page, 'https://bsky.app/profile/dana/post/abc', 'like');
+  check('an already-liked post is refused, not un-liked', !out.ok && (out.error ?? '').includes('already'), out);
+  bstate.liked = false;
+  await page.close();
+}
+
+{
+  const page = await openBsky();
+  const out = await bluesky.commentOnPost!(page, 'https://bsky.app/profile/dana/post/abc', 'we saw the same thing');
+  check('replying by URL reports ok', out.ok, out);
+  check('the reply text arrived', ((await read<string>(page, '__reply')) ?? '').includes('same thing'));
+  await page.close();
+}
+
+{
+  const page = await openBsky();
+  const out = await bluesky.follow!(page, 'https://bsky.app/profile/dana.bsky.social');
+  check('following reports ok', out.ok, out);
+  check('the button flipped', (await read<boolean>(page, '__followed')) === true);
+  bstate.following = true;
+  const page2 = await openBsky();
+  const again = await bluesky.follow!(page2, 'https://bsky.app/profile/dana.bsky.social');
+  check('an already-followed profile is refused', !again.ok && (again.error ?? '').includes('already'), again);
+  bstate.following = false;
+  await page.close(); await page2.close();
+}
+
+{
+  const page = await openBsky();
+  const out = await bluesky.deletePost!(page, 'shipped the retry loop');
+  check('deleting confirms the post is gone', out.ok, out);
+  check('the confirm dialog fired', bstate.deleted === true);
   await page.close();
 }
 

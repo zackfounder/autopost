@@ -1,10 +1,12 @@
 import type { PlatformAdapter, PlatformId } from './types.ts';
 import { linkedin } from './linkedin.ts';
 import { x } from './x.ts';
+import { bluesky } from './bluesky.ts';
 
 export const PLATFORMS: Record<PlatformId, PlatformAdapter> = {
   linkedin,
   x,
+  bluesky,
 };
 
 export const PLATFORM_IDS = Object.keys(PLATFORMS) as PlatformId[];

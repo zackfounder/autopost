@@ -1,8 +1,8 @@
 # linkedin-browser-agent
 
-**Self-hosted LinkedIn and X automation.** An AI agent that runs your **LinkedIn**
+**Self-hosted social media automation.** An AI agent that runs your **LinkedIn**
 — profile and company page, posts, comments, reactions, reposts, DMs, invitations,
-replies to your own comment threads — and your **X** account, from your own
+replies to your own comment threads — plus **X** and **Bluesky**, from your own
 logged-in browser, on your own machine.
 
 No platform API keys, no approved developer app, no monthly SaaS, nothing leaving
@@ -45,6 +45,10 @@ Two docs before you touch anything:
 | **Outreach funnel** | invite → filter_connected → message → check_replies |
 
 **X:** posts and threads, DMs, feed reading, likes.
+
+**Bluesky:** posts and threads, feed reading, likes, replies, follows, delete. The
+most reliable of the three to automate — the client is open source and ships
+`data-testid` on everything, because its own end-to-end tests depend on them.
 
 Everything a model writes — post, comment, reply, DM, repost commentary — passes the
 content gate before it can reach an account, and again immediately before publishing.
@@ -96,8 +100,9 @@ Then connect each account. **You log in yourself** — a real browser window ope
 waits. Nothing types a password, reads a credential, or touches 2FA.
 
 ```bash
-npm run login -- main-li  --platform linkedin
-npm run login -- main-x   --platform x
+npm run login -- main-li   --platform linkedin
+npm run login -- main-x    --platform x
+npm run login -- main-bsky --platform bluesky
 ```
 
 One account = one browser profile = one platform. The session lives in
@@ -136,6 +141,29 @@ The engine does not auto-start. You press the button.
 A page post needs the page's own composer URL, passed when the job is created. There
 is deliberately **no fallback** to the personal profile: if the page composer cannot
 be opened, the post fails rather than landing on your own feed under your own name.
+
+## Writing one post, by hand
+
+Before you hand a scheduler your real account, watch it write something.
+
+```bash
+npm run draft -- main-li "the number that surprised me this week" \
+  --facts "churn 4.1%, was 6.8% in May. one onboarding change."
+```
+
+It writes, gates, and prints the post with its violations if it failed. Then:
+
+```bash
+npm run queue                          # everything waiting, with ids
+npm run queue -- show 3                # the full body, and why it is blocked
+npm run queue -- edit 3 "new text"     # replace it — this re-runs the gate
+npm run queue -- discard 3
+npm run publish -- 3                   # opens the browser and publishes this one
+```
+
+`npm run publish -- main-li --text "..."` publishes something you wrote yourself.
+It still goes through the gate, the rate limiter and the audit log — there is no
+path around them, including this one.
 
 ## Scheduling the agents
 
@@ -181,7 +209,10 @@ obeys working hours and rate caps.
 | `npm run setup` | The visual wizard: key, login, first post. Re-runnable. |
 | `npm run setup:cli` | The same, in the terminal |
 | `npm run doctor` | Read-only health check: node, keys, model, bind address, `.env` permissions, accounts |
-| `npm run selftest` | 46 checks driving the real adapter through a real browser against a fake LinkedIn. No account, no network |
+| `npm run selftest` | 66 checks driving the real adapters through a real browser against fake LinkedIn and Bluesky. No account, no network |
+| `npm run draft -- <account> "..."` | Write one post, gate it, print it. Publishes nothing |
+| `npm run queue` | What is waiting. `-- show/edit/discard <id>` |
+| `npm run publish -- <id>` | Publish one item now, through the same gate and caps |
 | `npm run smoke` | 74 checks: URL handling, workflow traps, queue machine, rate limiter, **the gate**, template rotation, thread splitting, job queue. No credentials, no network. |
 | `npm run db:init` | Create the database |
 | `npm run login -- <name> --platform <p>` | Connect one account (interactive). `--proxy socks5://…` to pin an IP. |

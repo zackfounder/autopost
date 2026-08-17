@@ -93,41 +93,25 @@ if (existingGroq) {
 }
 const groqKey = (await ask('   paste key > ', existingGroq)).trim();
 
-let model = current('GROQ_MODEL') || 'llama-3.3-70b-versatile';
+const { DEFAULT_GROQ_MODEL } = await import('../src/ai/models.ts');
+let model = current('GROQ_MODEL') || DEFAULT_GROQ_MODEL;
 
 if (groqKey) {
   // Validate against /models rather than a completion: it costs no tokens, and it
   // also tells us whether the configured model still exists. Groq retires model
   // ids on its own schedule, and a stale one fails at first generation — hours
   // after setup, in a scheduled job, where nobody is watching.
-  const res = await fetch('https://api.groq.com/openai/v1/models', {
-    headers: { Authorization: `Bearer ${groqKey}` },
-  }).catch((e: Error) => e);
+  const { fetchModelIds, pickChatModel } = await import('../src/ai/models.ts');
+  const res = await fetchModelIds(groqKey);
 
-  if (res instanceof Error) {
-    say(`   could not reach Groq (${res.message}) — key saved, verify later with \`npm run doctor\``);
-  } else if (res.status === 401) {
-    say('   that key was rejected (401). Saved anyway — re-run setup to replace it.');
-  } else if (!res.ok) {
-    say(`   Groq answered ${res.status} — key saved, verify later with \`npm run doctor\``);
+  if (!res.ok) {
+    say(`   ${res.error} — key saved, verify later with \`npm run doctor\``);
   } else {
-    const body = await res.json() as { data?: { id: string }[] };
-    const ids = (body.data ?? []).map((m) => m.id);
-    if (ids.includes(model)) {
-      say(`   key works, and ${model} is live`);
-    } else {
-      // Prefer a same-family replacement over the first id in the list, which is
-      // frequently a whisper or guard model that cannot write a post at all.
-      const replacement = ids.find((id) => /llama.*70b/.test(id))
-        ?? ids.find((id) => /llama/.test(id) && !/guard/.test(id))
-        ?? ids.find((id) => !/whisper|guard|tts/.test(id));
-      if (replacement) {
-        say(`   key works. ${model} is gone from Groq — switching to ${replacement}`);
-        model = replacement;
-      } else {
-        say(`   key works, but ${model} is not in this account's model list`);
-      }
-    }
+    const picked = pickChatModel(res.ids, model);
+    model = picked.model;
+    say(picked.switched
+      ? `   key works. The configured model is gone from Groq — switching to ${model}`
+      : `   key works, and ${model} is live`);
   }
   next = set(next, 'GROQ_API_KEY', groqKey);
   next = set(next, 'GROQ_MODEL', model);

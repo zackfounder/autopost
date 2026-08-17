@@ -1,0 +1,76 @@
+{
+  "platform": "bluesky",
+  "kind": "post",
+  "note": "Copy to templates/bluesky/bank.json and make these yours. That file is git-ignored.",
+  "templates": [
+    {
+      "id": "bluesky.found-this",
+      "name": "Found this",
+      "when": "You ran into something concrete and slightly odd while building.",
+      "skeleton": "{{what_you_ran_into}}\n{{why_it_is_odd}}",
+      "slots": {
+        "what_you_ran_into": "The specific thing, in one line, past tense.",
+        "why_it_is_odd": "The part that surprised you. If nothing surprised you, do not post."
+      },
+      "constraints": {
+        "maxChars": 300
+      }
+    },
+    {
+      "id": "bluesky.one-number",
+      "name": "One number",
+      "when": "A single real measurement is the whole post.",
+      "skeleton": "{{the_number_in_context}}\n{{what_you_take_from_it}}",
+      "slots": {
+        "the_number_in_context": "The number and what it measures.",
+        "what_you_take_from_it": "One line. No call to action."
+      },
+      "constraints": {
+        "maxChars": 300,
+        "requiresNumber": true
+      }
+    },
+    {
+      "id": "bluesky.wrong-about",
+      "name": "Wrong about",
+      "when": "You believed something and the evidence changed your mind.",
+      "skeleton": "{{what_you_believed}}\n{{what_changed_it}}",
+      "slots": {
+        "what_you_believed": "Stated plainly, without softening.",
+        "what_changed_it": "The specific evidence."
+      },
+      "constraints": {
+        "maxChars": 300
+      }
+    },
+    {
+      "id": "bluesky.build-thread",
+      "name": "Build thread",
+      "when": "Something needs sequence. Numbered 1/, 2/, split per post.",
+      "skeleton": "1/ {{the_claim}}\n2/ {{what_you_did}}\n3/ {{what_happened}}\n4/ {{what_you_would_change}}",
+      "slots": {
+        "the_claim": "The whole thread in one line.",
+        "what_you_did": "Concretely.",
+        "what_happened": "The result, with a number where there is one.",
+        "what_you_would_change": "Honest, including 'nothing'."
+      },
+      "constraints": {
+        "isThread": true,
+        "perTweet": true
+      }
+    },
+    {
+      "id": "bluesky.real-question",
+      "name": "A real question",
+      "when": "You genuinely do not know and the answer changes what you build.",
+      "skeleton": "{{what_you_already_tried}}\n{{the_question}}",
+      "slots": {
+        "what_you_already_tried": "This is what separates it from bait.",
+        "the_question": "One question, answerable in a sentence."
+      },
+      "constraints": {
+        "maxChars": 300
+      }
+    }
+  ]
+}

@@ -129,7 +129,15 @@ class GroqClient implements AiClient {
     });
 
     if (!res.ok) {
-      throw new Error(`groq ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      const detail = (await res.text()).slice(0, 200);
+      // The one Groq error worth translating: a retired model id looks like a
+      // broken key or a broken program, and is neither.
+      if (res.status === 404 && /model/i.test(detail)) {
+        throw new Error(
+          `the model "${this.model}" no longer exists on Groq. Run \`npm run doctor\` — it will name a live one.`,
+        );
+      }
+      throw new Error(`groq ${res.status}: ${detail}`);
     }
     const body = await res.json() as {
       choices?: { message?: { content?: string }; finish_reason?: string }[];

@@ -172,10 +172,10 @@ const { createJob, nextDueJob, finishJob, nextRunAt, createContent, recentPublis
   await import('../src/db/content.ts');
 
 console.log('\n6. Platforms and template bank');
-check('both platforms load', describePlatforms().length === 2, PLATFORM_IDS);
+check('all three platforms load', describePlatforms().length === 3, PLATFORM_IDS);
 check('X caps a post at 280 chars', getPlatform('x').rules.post.maxChars === 280);
 check('LinkedIn caps a post at 6 lines', getPlatform('linkedin').rules.post.maxLines === 6);
-check('only linkedin and x exist', PLATFORM_IDS.join(',') === 'linkedin,x');
+check('the platform set is exactly linkedin, x, bluesky', PLATFORM_IDS.join(',') === 'linkedin,x,bluesky');
 
 loadTemplates(true);
 for (const p of PLATFORM_IDS) {

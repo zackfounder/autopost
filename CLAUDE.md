@@ -1,6 +1,6 @@
 # linkedin-browser-agent
 
-A local social engine for **LinkedIn and X**. One real browser per account holding a
+A local social engine for **LinkedIn, X and Bluesky**. One real browser per account holding a
 real session, rolling rate caps, human pacing. Agents post, comment, react, repost,
 reply, DM and manage invitations autonomously, bounded by an approved template bank
 and a content gate enforced in code.
@@ -97,7 +97,11 @@ One tick = at most one action, then a 35–140s human gap.
 ```bash
 npm run setup      # first run on a new machine: .env, API token, AI key, database. Re-runnable.
 npm run doctor     # read-only health check: node, keys, live model id, db, connected accounts
-npm run smoke      # 59 checks. No credentials, no network, no browser. Run this first.
+npm run smoke      # engine checks. No credentials, no network, no browser. Run this first.
+npm run selftest   # browser layer: real Chromium against fixture DOM in scripts/fixtures/
+npm run draft -- <account> "brief"   # write one post, gate it, print it. Publishes nothing.
+npm run queue      # what is waiting; -- show/edit/discard <id>
+npm run publish -- <id>              # publish one, through the same gate and caps
 npm run typecheck
 npm run accounts   # read-only: what is connected, what it can do, today's budget
 npm run login:all  # walks every account that has no live session, one browser each
@@ -131,6 +135,6 @@ covers the engine; the browser layer needs a deliberate, watched, headed run.
 | A voice or behaviour rule | `instructions/GLOBAL.md` or `instructions/<platform>.md`. Read fresh per generation. |
 | A hard-enforced rule | `src/content/gate.ts` **and** `gateRulesForPrompt()` so the model is told **and** a smoke check. |
 | A funnel action | An `ActionDef` in `src/actions/`, registered in `actions/index.ts`. Auto-exposed via `list_actions`. |
-| A platform | `src/platforms/<id>.ts` + `templates/<id>/` + `instructions/<id>.md`. |
+| A platform | `src/platforms/<id>.ts` + `templates/<id>/bank.example.json` + `instructions/<id>.example.md` + the `PlatformId` union + a fixture in `scripts/fixtures/` and a block in `selftest.ts`. Nothing ships without the fixture. |
 | A job kind | A branch in `runJob()` **and** an entry in `JOB_KINDS` — the CLI and the MCP tool both read that array, and a smoke check asserts every kind in it is handled. |
 | A targeted platform action | An optional method on `PlatformAdapter`, implemented in the adapter, listed in `TARGETED` in `platforms/index.ts` so the capability matrix reports it, plus a cap in the adapter's `defaultLimits`. |

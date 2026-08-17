@@ -1,7 +1,7 @@
 import type { Page } from 'playwright';
 import type { Candidates } from '../browser/selectors.ts';
 
-export type PlatformId = 'linkedin' | 'x';
+export type PlatformId = 'linkedin' | 'x' | 'bluesky';
 
 export interface FeedItem {
   /** Stable identifier for dedup — permalink where possible, else author+hash. */
